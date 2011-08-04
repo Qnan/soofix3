@@ -14,6 +14,10 @@ public class Soofix3 {
 	 * @param args the command line arguments
 	 */
 	public static void main(String[] args) {
-		// TODO code application logic here
+		Tree tree = new Tree();
+//                int seq[] = new int[]{'b','o','o','k','k','e','e','p','e','r',};
+		int seq[] = new int[]{'a', 'b', 'b', 'b', 'b'};
+		tree.addSequence(seq);
+		tree.printTree(seq);
 	}
 }
