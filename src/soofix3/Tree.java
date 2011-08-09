@@ -11,36 +11,29 @@ public class Tree {
 	List<int[]> sequences = new ArrayList<int[]>();
 	Node root = null;
 
-	public Node edgeSplit(int[] seq, int token, Edge edge) {
-		Node startNode = edge.startNode;
-		Node endNode = edge.endNode;
-		Node newNode = new Node(null);
-		Edge newEdge = new Edge();
-		endNode.setParentEdge(newEdge);
-		newEdge.startNode = newNode;
-		newEdge.endNode = endNode;
-		newEdge.startPos = edge.startPos + 1;
-		newEdge.endPos = edge.endPos;
-		newNode.addEdge(seq[newEdge.startPos], newEdge);
-		newNode.setParentEdge(edge);
-		edge.endNode = newNode;
-		edge.endPos = newEdge.startPos;
+	public Node edgeSplit(int[] seq, int token, Node node, Node next) {
+		Node parent = node.parent();
+		Node newNode = new Node(parent, node.startPos(), node.startPos() + 1, next);
+		parent.setChild(token, newNode);
+		newNode.setChild(seq[newNode.endPos()], node);
+		node.setParent(newNode);
+		node.setStartPos(newNode.endPos());
 		return newNode;
 	}
 
 	private void printSubtree(int[] seq, Node node, int depth) {
 		for (Integer childToken : node.tokens()) {
-			Edge edge = node.getEdge(childToken);
+			Node child = node.getChild(childToken);
 			for (int i = 0; i < depth; ++i) {
 				System.out.print("\t");
 			}
-			System.out.print((char)childToken.intValue());
+			System.out.print((char) childToken.intValue());
 			System.out.print(':');
-			for (int i = edge.startPos; i < edge.endPos; ++i) {
+			for (int i = child.startPos(); i < child.endPos(); ++i) {
 				System.out.print((char) seq[i]);
 			}
 			System.out.println();
-			printSubtree(seq, edge.endNode, depth + 1);
+			printSubtree(seq, child, depth + 1);
 		}
 	}
 
@@ -54,81 +47,87 @@ public class Tree {
 	public void addSequence(int[] seq) {
 		int seqId = sequences.size();
 		sequences.add(seq);
-		root = new Node(null);
-		root.setNext(null);
-		Node current = root, longestSuffixNode = null, last = null;
-		longestSuffixNode = new Node(null);
-		Edge firstEdge = new Edge();
-		firstEdge.startNode = root;
-		firstEdge.endNode = longestSuffixNode;
-		firstEdge.startPos = 0;
-		firstEdge.endPos = 1;
-		root.addEdge(seq[0], firstEdge);
-		longestSuffixNode.setNext(root);
-		longestSuffixNode.setParentEdge(firstEdge);
-//		printSuffixes(longestSuffixNode, seq);
+		root = new Node(null, 0, 0, null);
+		root.setNext(root);
+		Node start = new Node(root, 0, 1, root);
+		root.setChild(seq[0], start);
+		printSuffixes(start, seq);
 		printTree(seq);
+		boolean stopFlag = false;
 		for (int i = 1; i < seq.length; ++i) {
 			int token = seq[i];
-			current = longestSuffixNode;
+			Node current = start, last = null;
 			System.out.println();
 			System.out.println();
 			System.out.println("###############################");
 			do {
 				Node next = current.next();
+				stopFlag = current == root;
 				if (current.isLeaf()) {
-					current.parentEdge().endPos++;
+					current.setEndPos(i + 1);
 				} else {
-					if (current.hasEdge(token)) {
-						Edge edge = current.getEdge(token);
-						if (edge.endPos - edge.startPos > 1) {
-							Node newNode = edgeSplit(seq, token, edge);
+					if (current.hasChild(token)) {
+						Node child = current.getChild(token);
+						if (child.endPos() - child.startPos() > 1) {
+							Node newNode = edgeSplit(seq, token, child, next);
+							if (last != null) {
+								last.setNext(newNode);
+							}
 							current = newNode;
 						} else {
-							current = edge.endNode;
+							child.setNext(next);
+							current = child;
+							if (last != null) {
+								last.setNext(child);
+							}
 						}
 					} else {
 						// create a new leaf node
-						Node newNode = new Node(null);
-						Edge newEdge = new Edge();
-						newEdge.startNode = current;
-						newEdge.endNode = newNode;
-						newEdge.startPos = i;
-						newEdge.endPos = i + 1;
-						newNode.setParentEdge(newEdge);
-						current.addEdge(token, newEdge);
+						Node newNode = new Node(current, i, i + 1, next);
+						current.setChild(token, newNode);
+						if (last != null) {
+							last.setNext(newNode);
+						}
 						current = newNode;
 					}
 				}
 
-				current.setNext(next);
-				if (last != null)
-					last.setNext(current);
-				printSuffixes(longestSuffixNode, seq);
+//				if (current != root)
+//					current.setNext(next == null ? root : next);
+//				if (last != null)
+//					last.setNext(current);
+//				printSuffixes(longestSuffixNode, seq);
+//				if (current == root)
+//					break;
 				last = current;
 				current = next;
-			} while (current != null);
+//				printSuffixes(start, seq);
+			} while (!stopFlag);
 			printTree(seq);
+			printSuffixes(start, seq);
 		}
 	}
 
-	private void printSuffixes(Node longestSuffixNode, int[] seq) {
-		System.out.println("********");
-		Node current = longestSuffixNode;
-		while (current != null) {
-			Node cc = current;
-			System.out.print('"');
-			while (cc.parentEdge() != null) {
-				Edge edge = cc.parentEdge();
-				for (int j = edge.endPos - 1; j >= edge.startPos; --j) {
-					System.out.print((char) seq[j]);
-				}
-				cc = edge.startNode;
+	private void recPrint(Node current, int[] seq) {
+		if (current.parent() != null) {
+			recPrint(current.parent(), seq);
+//			int startPos = current.parent().endPos();
+			for (int i = current.startPos(); i < current.endPos(); ++i) {
+				System.out.print((char) seq[i]);
 			}
+		}
+
+	}
+
+	private void printSuffixes(Node start, int[] seq) {
+		System.out.println("********");
+		Node current = start, last = null;
+		while (last != root) {
+			System.out.print('"');
+			recPrint(current, seq);
 			System.out.print('"');
 			System.out.println();
-//			if (current.next() == current)
-//				break;
+			last = current;
 			current = current.next();
 		}
 	}

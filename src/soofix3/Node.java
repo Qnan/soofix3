@@ -5,56 +5,72 @@ import java.util.Map;
 
 public class Node {
 
-	public Node(Node suffixLink) {
-		this.suffixLink = suffixLink;
-		edges = new HashMap<Integer, Edge>();
+	public Node(Node parent, int startPos, int endPos, Node next) {
+		this.parent = parent;
+		this.startPos = startPos;
+		this.endPos = endPos;
+		this.next = next;
+		children = new HashMap<Integer, Node>();
 	}
-//	public final int id;
-//	public final int token;
-//	public final int strid, pos; // identifier of the string and position in that string
-	private Map<Integer, Edge> edges;
-	private Node suffixLink = null, next = null;
-	private Edge parentEdge = null;
+	private Map<Integer, Node> children;
+	private Node next = null;
+	private int endPos;
+	private int startPos;
+	private Node parent;
 
 	public boolean isLeaf() {
-		return edges.isEmpty();
+		return children.isEmpty();
 	}
-//	public abstract boolean nextIsParent ();
 
 	public Node next() {
 		return next;
 	}
-//	public abstract Iterable<Node> children();
 
-	public boolean hasEdge(int token) {
-		return edges.containsKey(token);
+	public boolean hasChild(int token) {
+		return children.containsKey(token);
 	}
 
-	public Edge getEdge(int token) {
-		return edges.get(token);
+	public Node getChild(int token) {
+		return children.get(token);
 	}
 
 	public Iterable<Integer> tokens() {
-		return edges.keySet();
+		return children.keySet();
 	}
 
-	public void addEdge(int token, Edge edge) {
-		edges.put(token, edge);
+	public void setChild(int token, Node child) {
+		children.put(token, child);
 	}
 
-	public Edge parentEdge() {
-		return parentEdge;
+	public void removeChild(int token) {
+		children.remove(token);
 	}
 
-	public void setParentEdge(Edge parentEdge) {
-		this.parentEdge = parentEdge;
+	public Node parent() {
+		return parent;
 	}
 
-	public Node suffixLink() {
-		return suffixLink;
+	public void setParent(Node parent) {
+		this.parent = parent;
 	}
 
 	public void setNext(Node node) {
 		this.next = node;
+	}
+
+	public int endPos() {
+		return endPos;
+	}
+
+	public void setEndPos(int endPos) {
+		this.endPos = endPos;
+	}
+
+	public int startPos() {
+		return startPos;
+	}
+
+	public void setStartPos(int startPos) {
+		this.startPos = startPos;
 	}
 }
