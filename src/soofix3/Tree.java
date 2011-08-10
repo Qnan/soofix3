@@ -1,19 +1,24 @@
 package soofix3;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-public class Tree {
+public final class Tree {
 
 	Map<Integer, Node> nodes = new HashMap<Integer, Node>();
-	List<int[]> sequences = new ArrayList<int[]>();
-	Node root = null, start;
+	Map<Node, Node> nn = new HashMap<Node, Node>();
+	int[] seq;
+	Node root, start;
 
-	public Node edgeSplit(int[] seq, int token, Node node, Node next) {
+	public Tree(int[] seq) {
+		this.seq = seq;
+		build();
+	}
+
+	public Node edgeSplit(int token, Node node, Node next) {
 		Node parent = node.parent();
-		Node newNode = new Node(parent, node.startPos(), node.startPos() + 1, next);
+		Node newNode = new Node(parent, node.startPos(), node.startPos() + 1);
+		nn.put(newNode, next);
 		parent.setChild(token, newNode);
 		newNode.setChild(seq[newNode.endPos()], node);
 		node.setParent(newNode);
@@ -21,7 +26,7 @@ public class Tree {
 		return newNode;
 	}
 
-	private void printSubtree(int[] seq, Node node, int depth) {
+	private void printSubtree(Node node, int depth) {
 		for (Integer childToken : node.tokens()) {
 			Node child = node.getChild(childToken);
 			for (int i = 0; i < depth; ++i) {
@@ -33,77 +38,86 @@ public class Tree {
 				System.out.print((char) seq[i]);
 			}
 			System.out.println();
-			printSubtree(seq, child, depth + 1);
+			printSubtree(child, depth + 1);
 		}
 	}
 
-	public void printTree(int[] seq) {
-		printSubtree(seq, root, 0);
+	public void printTree() {
+		printSubtree(root, 0);
 	}
 
-	public void addSequence(int[] seq) {
-		int seqId = sequences.size();
-		sequences.add(seq);
-		root = new Node(null, 0, 0, null);
-		root.setNext(root);
-		start = new Node(root, 0, seq.length, root);
+	public void build() {
+		root = new Node(null, 0, 0);
+		nn.put(root, root);
+		start = new Node(root, 0, seq.length);
+		nn.put(start, root);
 		root.setChild(seq[0], start);
 		boolean stopFlag = false;
+		Node activePoint = start;
 		for (int i = 1; i < seq.length; ++i) {
 			int token = seq[i];
-			Node current = start, last = null;
+			Node current = activePoint, last = null;
+			Node activePointNew = null;
 			do {
-				Node next = current.next();
+				Node next = nn.get(current);
 				stopFlag = current == root;
-				if (current.isLeaf()) {
-//					current.setEndPos(i + 1);
-				} else {
+				if (!current.isLeaf()) {
 					if (current.hasChild(token)) {
 						Node child = current.getChild(token);
 						if (child.endPos() - child.startPos() > 1) {
-							Node newNode = edgeSplit(seq, token, child, next);
+							Node newNode = edgeSplit(token, child, next);
 							current = newNode;
 						} else {
-							child.setNext(next);
+							nn.put(child, next);
 							current = child;
 						}
 					} else {
 						// create a new leaf node
-						Node newNode = new Node(current, i, seq.length, next);
+						Node newNode = new Node(current, i, seq.length);
+						nn.put(newNode, next);
 						current.setChild(token, newNode);
 						current = newNode;
 					}
+					if (activePointNew == null) {
+						activePointNew = current;
+					}
 				}
 
-				if (last != null)
-					last.setNext(current);
+				if (last != null) {
+					nn.put(last, current);
+				}
 				last = current;
 				current = next;
 			} while (!stopFlag);
-//			printTree(seq);
-//			printSuffixes(start, seq);
+			activePoint = activePointNew;
 		}
 	}
 
-	private void recPrint(Node current, int[] seq) {
-		if (current.parent() != null) {
-			recPrint(current.parent(), seq);
-			for (int i = current.startPos(); i < current.endPos(); ++i) {
-				System.out.print((char) seq[i]);
+	private void recPrint(StringBuilder sb, Node node, int len) {
+		if (node.parent() != null) {
+			recPrint(sb, node.parent(), len);
+			for (int i = node.startPos(); i < node.endPos(); ++i) {
+				sb.append((char) seq[i]);
 			}
 		}
-
 	}
 
-	public void printSuffixes(int[] seq) {
+	private String nodeToString(Node node) {
+		return nodeToString(node, seq.length);
+	}
+
+	private String nodeToString(Node node, int len) {
+		StringBuilder sb = new StringBuilder();
+		recPrint(sb, node, len);
+		return sb.toString();
+	}
+
+	public void printSuffixes() {
 		Node current = start, last = null;
 		while (last != root) {
-			System.out.print('"');
-			recPrint(current, seq);
-			System.out.print('"');
-			System.out.println();
+			System.out.println("\"" + nodeToString(current) + "\"");
 			last = current;
-			current = current.next();
+			current = nn.get(current);
 		}
 	}
 }

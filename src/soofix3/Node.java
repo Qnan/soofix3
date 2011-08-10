@@ -5,25 +5,19 @@ import java.util.Map;
 
 public class Node {
 
-	public Node(Node parent, int startPos, int endPos, Node next) {
+	public Node(Node parent, int startPos, int endPos) {
 		this.parent = parent;
 		this.startPos = startPos;
 		this.endPos = endPos;
-		this.next = next;
 		children = new HashMap<Integer, Node>();
 	}
 	private Map<Integer, Node> children;
-	private Node next = null;
 	private int endPos;
 	private int startPos;
 	private Node parent;
 
 	public boolean isLeaf() {
 		return children.isEmpty();
-	}
-
-	public Node next() {
-		return next;
 	}
 
 	public boolean hasChild(int token) {
@@ -52,10 +46,6 @@ public class Node {
 
 	public void setParent(Node parent) {
 		this.parent = parent;
-	}
-
-	public void setNext(Node node) {
-		this.next = node;
 	}
 
 	public int endPos() {
