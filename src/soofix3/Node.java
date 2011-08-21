@@ -51,6 +51,10 @@ public class Node {
 	public int endPos() {
 		return endPos;
 	}
+	
+	public int endPos(int pos) {
+		return Math.min(endPos,pos);
+	}
 
 	public void setEndPos(int endPos) {
 		this.endPos = endPos;
@@ -62,5 +66,9 @@ public class Node {
 
 	public void setStartPos(int startPos) {
 		this.startPos = startPos;
+	}
+
+	public int length(int pos) {
+		return endPos(pos) - startPos;
 	}
 }
