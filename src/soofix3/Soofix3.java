@@ -14,8 +14,9 @@ public class Soofix3 {
 //		int seq[] = new int[]{'b', 'b', 'b', 'b', 'b'};
 //		int seq[] = new int[]{'a', 'b', 'c', 'd', 'e'};
 		Tree tree = new Tree(seq);
-		System.out.println("...");
-		tree.printTree();
+		System.out.println(tree.find(new int[]{'s','s','i'}));
+		System.out.println(tree.find(new int[]{'m','i','s','s','i','s','s','i','p','p','i'}));
+//		tree.printTree();
 //		System.out.println();
 //		System.out.println();
 //		tree.printSuffixes();
