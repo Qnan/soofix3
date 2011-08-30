@@ -101,13 +101,12 @@ public final class Tree {
 		Node current = root;
 		
 		Suffix suffix = new Suffix(current, 0);
-		for (pos = 1; pos <= seq.length; ++pos) {			
+		for (pos = 1; pos < seq.length; ++pos) {			
 			System.out.println(nodeToString(suffix.node) + " -- " + suffix.from);
 			System.out.flush();
 			update(suffix);
 			canonize(suffix);
 			printTree();
-//			suffix.from++;
 		}
 		pos = seq.length; // TODO: unhack
 	}
