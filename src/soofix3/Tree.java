@@ -1,6 +1,5 @@
 package soofix3;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -71,12 +70,12 @@ public final class Tree {
 		}
 	}
 
-	private void canonize(Suffix suffix) {
+	private void canonize(Suffix suffix, int i) {
 		// s -> suffix.node
 		// k -> suffix.from
 		// p -> pos
 		while (true) {
-			int suffixLen = pos - suffix.from;
+			int suffixLen = i - suffix.from;
 			if (suffixLen == 0) {
 				return;
 			}
@@ -85,7 +84,7 @@ public final class Tree {
 				return;
 			}
 			Node nextNode = suffix.node.getChild(firstToken);
-			int nextNodeWordLen = nextNode.length(pos);
+			int nextNodeWordLen = nextNode.length(i);
 			if (suffixLen < nextNodeWordLen) {
 				return;
 			}
@@ -112,7 +111,7 @@ public final class Tree {
 			}
 			oldRoot = explicitState;
 			suffix.node = nn.get(suffix.node);
-			canonize(suffix);
+			canonize(suffix, pos - 1);
 			explicitState = edgeSplit(suffix, token);
 			if (logBuilding) {
 				System.out.println(".");
@@ -135,11 +134,11 @@ public final class Tree {
 		Suffix suffix = new Suffix(current, 0);
 		for (pos = 1; pos < seq.length; ++pos) {
 			if (logBuilding) {
-				System.out.println(nodeToString(suffix.node) + " -- " + suffix.from);
+				System.out.println(nodeToString(suffix.node) + " -- " + suffix.from + " - " + Integer.toString(pos));
 				System.out.flush();
 			}
 			update(suffix);
-			canonize(suffix);
+			canonize(suffix, pos);
 			if (logBuilding) {
 				printTree();
 			}
