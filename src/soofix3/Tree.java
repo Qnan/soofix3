@@ -1,17 +1,25 @@
 package soofix3;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
 public final class Tree {
+	public static String signature = "AIMT-ST";
 
-	Map<Integer, Node> nodes = new HashMap<Integer, Node>();
 	Map<Node, Node> nn = new HashMap<Node, Node>();
 	int[] seq;
 	int pos;
 	Node root, ground;
 	static int INFINITY = Integer.MAX_VALUE;
 	public static boolean logBuilding = false;
+
+	private Tree() {
+	}
 
 	public Tree(int[] seq) {
 		this.seq = seq;
@@ -29,7 +37,7 @@ public final class Tree {
 			int token = seq[i];
 			if (!node.hasChild(token)) {
 				return -1;
-			}			
+			}
 			node = node.getChild(token);
 			for (j = node.startPos(); j < node.endPos() && i < seq.length; ++j, ++i) {
 				if (seq[i] != this.seq[j]) {
@@ -39,7 +47,7 @@ public final class Tree {
 		}
 		return j - seq.length;
 	}
-	
+
 	private Node edgeSplit(Suffix suffix, int token) {
 		// i -> pos
 		// p -> pos - 1
@@ -181,5 +189,102 @@ public final class Tree {
 		StringBuilder sb = new StringBuilder();
 		recPrint(sb, node);
 		return sb.toString();
+	}
+
+	private int enumnodes (Map<Integer, Node> nodes, Map<Node, Integer> ids, int cnt, Node node) {
+		nodes.put(cnt, node);
+		ids.put(node, cnt);
+		cnt++;
+		for (Integer token : node.tokens()) {
+			cnt = enumnodes(nodes, ids, cnt, node.getChild(token));
+		}
+		return cnt;
+	}
+
+	private void storeNodeData (DataOutputStream dos, Map<Node, Integer> ids, Node node) throws IOException {
+		dos.writeInt(node.startPos());
+		dos.writeInt(node.endPos());
+		dos.writeInt(node.tokens().size());
+		for (Integer token: node.tokens()) {
+			dos.writeInt(token);
+			dos.writeInt(ids.get(node.getChild(token)));
+		}
+	}
+
+	private void readNodeData (Node node, Map<Integer, Node> nodes, DataInputStream dis) throws IOException {
+		node.setStartPos(dis.readInt());
+		node.setEndPos(dis.readInt());
+		int num = dis.readInt();
+		for (int i = 0; i < num; ++i) {
+			int token = dis.readInt();
+			int nodeid = dis.readInt();
+			Node child = nodes.get(nodeid);
+			node.setChild(token, child);
+			child.setParent(node);
+		}
+	}
+
+	public void save(OutputStream os) throws IOException {
+		DataOutputStream dos = new DataOutputStream(os);
+		dos.writeBytes(signature); // item 00
+		dos.writeInt(seq.length); // item 01
+		for (int i = 0; i < seq.length; ++i) { // item 02
+			dos.writeInt(seq[i]);
+		}
+		Map<Integer, Node> nodes = new HashMap<Integer, Node>();
+		Map<Node, Integer> ids = new HashMap<Node, Integer>();
+		nodes.put(0, ground);
+		ids.put(ground, 0);
+		int total = enumnodes(nodes, ids, 1, root);
+		dos.writeInt(total); // item 03
+		// skip ground
+		for (int i = 1; i < total; ++i) // item 04
+			storeNodeData(dos, ids, nodes.get(i));
+
+		dos.writeInt(nn.size()); // item 05
+		for (Node node : nn.keySet()) { // item 06
+			dos.writeInt(ids.get(node));
+			dos.writeInt(ids.get(nn.get(node)));
+		}
+	}
+
+	private void load(InputStream is) throws IOException {
+		DataInputStream dis = new DataInputStream(is);
+		char[] signatureBuf = new char[signature.length()];
+		for (int i = 0; i < signatureBuf.length; ++i) // item 00
+			signatureBuf[i] = (char)dis.readByte();
+		if (!new String(signatureBuf).equals(signature))
+			throw new java.io.IOException("Signature is not valid");
+		int length = dis.readInt(); // item 01
+		seq = new int[length];
+		for (int i = 0; i < length; ++i) { // item 02
+			seq[i] = dis.readInt();
+		}
+		pos = seq.length;
+		int total = dis.readInt(); // item 03
+		Map<Integer, Node> nodes = new HashMap<Integer, Node>();
+		for (int i = 0; i < total; ++i) {
+			nodes.put(i, new Node(null, -1, -1));
+		}
+		ground = nodes.get(0);
+		for (int i = 0; i < seq.length; ++i) {
+			ground.setChild(seq[i], root);
+		}
+		root = nodes.get(1);
+		for (int i = 1; i < total; ++i) {  // item 04
+			readNodeData(nodes.get(i), nodes, dis);
+		}
+
+		int nSuffixLinks = dis.readInt(); // item 05
+		for (int i = 0; i < nSuffixLinks; ++i) { // item 06
+			int from = dis.readInt();
+			int to = dis.readInt();
+			nn.put(nodes.get(from), nodes.get(to));
+		}
+	}
+	public static Tree fromStream (InputStream is) throws IOException {
+		Tree tree = new Tree();
+		tree.load(is);
+		return tree;
 	}
 }

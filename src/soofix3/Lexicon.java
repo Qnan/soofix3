@@ -26,7 +26,7 @@ public class Lexicon {
 	int id(String token) {
 		return lexicon.get(token);
 	}
-	
+
 	String token(int id) {
 		return inv.get(id);
 	}

@@ -2,8 +2,11 @@ package soofix3;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -75,28 +78,16 @@ public class Soofix3 {
 			  endTime2 = System.nanoTime();
 			}
 			final long duration2 = endTime2 - startTime2;
-			
+
 			treeTotal += duration1;
 			stringTotal += duration2;
-			
+
 			if (treeRes != stringRes) {
 				throw new Error("search result mismatch");
 			}
 		}
 		System.out.println("treeTotal: " + treeTotal/1000000);
 		System.out.println("stringTotal: " + stringTotal/1000000);
-	}
-
-	public static void main(String[] args) throws IOException {
-//		int seq[] = new int[]{'m','i','s','s','i','s','s','i','p','p','i'};
-//		printSeq(seq);
-//		Tree.logBuilding = true;
-//		Tree tree = new Tree(seq);
-//
-//		testSearch(200000, 3, 1000, 'z', 1);
-//		System.out.println(findShortestFailingSeed(1000, 10000, 'h'));
-
-		run(args);
 	}
 
 	private static void printSeq(int[] seq) {
@@ -122,13 +113,22 @@ public class Soofix3 {
 		System.out.println("mode: " + mode);
 		Lexicon lexicon = null;
 		if (mode.equals("build")) {
-			if (args.length < 2) {
-				throw new Error("no input file name");
+			if (args.length < 3) {
+				throw new Error("arguments: <input file> <output file> [force]");
 			}
 			String fnameInput = args[1];
-			File fileInput = new File(fnameInput);
+			String fnameOutput = args[2];
+			boolean overwrite = args.length > 3 ? args[3].equals("force") : false;
+			File fileInput = new File(fnameInput).getCanonicalFile();
 			if (!fileInput.exists()) {
-				throw new Error("file not found: " + fileInput.getCanonicalFile().getAbsolutePath());
+				throw new Error("file not found: " + fileInput.getAbsolutePath());
+			}
+			File fileOutput = new File(fnameOutput).getCanonicalFile();
+
+			if (!overwrite && fileOutput.exists()) {
+				throw new Error("file already exists: " + fileOutput.getAbsolutePath());
+			} else if (!fileOutput.getParentFile().exists()) {
+				throw new Error("directory not found: " + fileOutput.getParentFile().getAbsolutePath());
 			}
 			BufferedReader br = new BufferedReader(new FileReader(fileInput));
 			String line;
@@ -150,8 +150,43 @@ public class Soofix3 {
 			}
 
 			Tree tree = new Tree(seq);
+			System.out.println("saving");
+			FileOutputStream fos = new FileOutputStream(fileOutput);
+			tree.save(fos);
+			fos.close();
+
+			System.out.println("loading");
+			FileInputStream fis = new FileInputStream(fileOutput);
+			Tree tree1 = Tree.fromStream(fis);
+
+			System.out.println("verifying");
+			if (tree.seq.length != tree1.seq.length)
+				throw new Error("sequence length mismatch");
+			Random rnd = new Random(123441234);
+			for (int i = 0; i < 1000; ++i) {
+				int a = rnd.nextInt(seq.length);
+				int b = Math.min(a + 1 + rnd.nextInt(50), seq.length);
+				int[] q = Arrays.copyOfRange(seq, a, b);
+				int p0 = tree.find(q);
+				int p1 = tree1.find(q);
+				if (p0 != p1) {
+					throw new Error("responce mismatch");
+				}
+			}
 		} else {
 			throw new Error("mode unknwon: " + mode);
 		}
+	}
+
+	public static void main(String[] args) throws IOException {
+//		int seq[] = new int[]{'m','i','s','s','i','s','s','i','p','p','i'};
+//		printSeq(seq);
+//		Tree.logBuilding = true;
+//		Tree tree = new Tree(seq);
+//
+//		testSearch(200000, 3, 1000, 'z', 1);
+//		System.out.println(findShortestFailingSeed(1000, 10000, 'h'));
+
+		run(args);
 	}
 }

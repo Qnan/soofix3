@@ -1,5 +1,6 @@
 package soofix3;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,7 +29,7 @@ public class Node {
 		return children.get(token);
 	}
 
-	public Iterable<Integer> tokens() {
+	public Collection<Integer> tokens() {
 		return children.keySet();
 	}
 
@@ -51,7 +52,7 @@ public class Node {
 	public int endPos() {
 		return endPos;
 	}
-	
+
 	public int endPos(int pos) {
 		return Math.min(endPos,pos);
 	}
