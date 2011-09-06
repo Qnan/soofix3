@@ -6,7 +6,7 @@ import java.util.Map;
 public class Lexicon {
 
 	final Map<String, Integer> lexicon = new HashMap<String, Integer>();
-	final Map<Integer, String> inv = new HashMap<Integer,String>();
+	final Map<Integer, String> inv = new HashMap<Integer, String>();
 	final int size;
 
 	Lexicon(Iterable<String> tokens) {
@@ -29,5 +29,13 @@ public class Lexicon {
 
 	String token(int id) {
 		return inv.get(id);
+	}
+
+	boolean hasToken(String token) {
+		return lexicon.containsKey(token);
+	}
+
+	boolean hasId(int id) {
+		return inv.containsKey(id);
 	}
 }

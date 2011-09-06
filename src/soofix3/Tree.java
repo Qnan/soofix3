@@ -6,11 +6,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 public final class Tree {
-	public static String signature = "AIMT-ST";
 
+	public static String signature = "AIMT-ST";
 	Map<Node, Node> nn = new HashMap<Node, Node>();
 	int[] seq;
 	int pos;
@@ -30,7 +32,18 @@ public final class Tree {
 		return find(seq) >= 0;
 	}
 
-	public int find(int[] seq) {
+	private void collectLeafOffsets(List<Integer> leafOffsets, Node node, int offset) {
+		if (node.isLeaf()) {
+			leafOffsets.add(offset);
+		} else {
+			for (Integer token : node.tokens()) {
+				Node child = node.getChild(token);
+				collectLeafOffsets(leafOffsets, child, offset + child.length(pos));
+			}
+		}
+	}
+
+	public int match(Ref<Node> endNodeRef, int[] seq) {
 		Node node = root;
 		int j = -1;
 		for (int i = 0; i < seq.length;) {
@@ -39,13 +52,36 @@ public final class Tree {
 				return -1;
 			}
 			node = node.getChild(token);
-			for (j = node.startPos(); j < node.endPos() && i < seq.length; ++j, ++i) {
+			for (j = node.startPos(); j < node.endPos(pos) && i < seq.length; ++j, ++i) {
 				if (seq[i] != this.seq[j]) {
 					return -1;
 				}
 			}
 		}
+		endNodeRef.set(node);
+		return j;
+	}
+
+	public int find(int[] seq) {
+		Ref<Node> endNodeRef = new Ref<Node>();
+		int j = match(endNodeRef, seq);
 		return j - seq.length;
+	}
+
+	public List<Integer> findAll(int[] seq) {
+		Ref<Node> endNodeRef = new Ref<Node>();
+		int j = match(endNodeRef, seq);
+		List<Integer> leafOffsets = new LinkedList<Integer>();
+		if (j < 0) {
+			return leafOffsets; // return empty list
+		}
+		Node node = endNodeRef.get();
+		int offset = node.endPos(pos) - j;
+		collectLeafOffsets(leafOffsets, node, offset);
+		for (int i = 0; i < leafOffsets.size(); ++i) {
+			leafOffsets.set(i, this.seq.length - leafOffsets.get(i) - seq.length);
+		}
+		return leafOffsets;
 	}
 
 	private Node edgeSplit(Suffix suffix, int token) {
@@ -191,7 +227,7 @@ public final class Tree {
 		return sb.toString();
 	}
 
-	private int enumnodes (Map<Integer, Node> nodes, Map<Node, Integer> ids, int cnt, Node node) {
+	private int enumnodes(Map<Integer, Node> nodes, Map<Node, Integer> ids, int cnt, Node node) {
 		nodes.put(cnt, node);
 		ids.put(node, cnt);
 		cnt++;
@@ -201,17 +237,17 @@ public final class Tree {
 		return cnt;
 	}
 
-	private void storeNodeData (DataOutputStream dos, Map<Node, Integer> ids, Node node) throws IOException {
+	private void storeNodeData(DataOutputStream dos, Map<Node, Integer> ids, Node node) throws IOException {
 		dos.writeInt(node.startPos());
 		dos.writeInt(node.endPos());
 		dos.writeInt(node.tokens().size());
-		for (Integer token: node.tokens()) {
+		for (Integer token : node.tokens()) {
 			dos.writeInt(token);
 			dos.writeInt(ids.get(node.getChild(token)));
 		}
 	}
 
-	private void readNodeData (Node node, Map<Integer, Node> nodes, DataInputStream dis) throws IOException {
+	private void readNodeData(Node node, Map<Integer, Node> nodes, DataInputStream dis) throws IOException {
 		node.setStartPos(dis.readInt());
 		node.setEndPos(dis.readInt());
 		int num = dis.readInt();
@@ -239,7 +275,9 @@ public final class Tree {
 		dos.writeInt(total); // item 03
 		// skip ground
 		for (int i = 1; i < total; ++i) // item 04
+		{
 			storeNodeData(dos, ids, nodes.get(i));
+		}
 
 		dos.writeInt(nn.size()); // item 05
 		for (Node node : nn.keySet()) { // item 06
@@ -252,9 +290,12 @@ public final class Tree {
 		DataInputStream dis = new DataInputStream(is);
 		char[] signatureBuf = new char[signature.length()];
 		for (int i = 0; i < signatureBuf.length; ++i) // item 00
-			signatureBuf[i] = (char)dis.readByte();
-		if (!new String(signatureBuf).equals(signature))
+		{
+			signatureBuf[i] = (char) dis.readByte();
+		}
+		if (!new String(signatureBuf).equals(signature)) {
 			throw new java.io.IOException("Signature is not valid");
+		}
 		int length = dis.readInt(); // item 01
 		seq = new int[length];
 		for (int i = 0; i < length; ++i) { // item 02
@@ -282,7 +323,8 @@ public final class Tree {
 			nn.put(nodes.get(from), nodes.get(to));
 		}
 	}
-	public static Tree fromStream (InputStream is) throws IOException {
+
+	public static Tree fromStream(InputStream is) throws IOException {
 		Tree tree = new Tree();
 		tree.load(is);
 		return tree;
