@@ -120,12 +120,12 @@ public class Soofix3 {
 		System.out.println();
 	}
 
-	private static List<String[]> readDataFile(File fileInput) throws FileNotFoundException, IOException {
+	private static List<List<String>> readDataFile(File fileInput) throws FileNotFoundException, IOException {
 		BufferedReader br = new BufferedReader(new FileReader(fileInput));
 		String document;
-		List<String[]> documents = new LinkedList<String[]>();
+		List<List<String>> documents = new LinkedList<List<String>>();
 		while ((document = br.readLine()) != null) {
-			documents.add(document.trim().split("\\s+"));
+			documents.add(Arrays.asList(document.trim().split("\\s+")));
 		}
 		return documents;
 	}
@@ -152,13 +152,13 @@ public class Soofix3 {
 		if (!fileQuery.exists()) {
 			throw new Error("file not found: " + fileQuery.getAbsolutePath());
 		}
-		List<String[]> documents = readDataFile(fileCorpus);
-		List<String[]> queries = readDataFile(fileQuery);
+		List<List<String>> documents = readDataFile(fileCorpus);
+		List<List<String>> queries = readDataFile(fileQuery);
 
 		StringTree st = new StringTree(documents);
-		for (String[] query : queries) {
+		for (List<String> query : queries) {
 			Map<Integer, List<Integer>> matches = st.find(query);
-			for (String word : Arrays.asList(query)) {
+			for (String word : query) {
 				System.out.print(word);
 				System.out.print(' ');
 			}

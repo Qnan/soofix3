@@ -176,7 +176,7 @@ public final class Tree {
 		Node current = root;
 
 		Suffix suffix = new Suffix(current, 0);
-		for (pos = 1; pos < seq.length; ++pos) {
+		for (pos = 1; pos <= seq.length; ++pos) {
 			if (logBuilding) {
 				System.out.println(nodeToString(suffix.node) + " -- " + suffix.from + " - " + Integer.toString(pos));
 				System.out.flush();
@@ -196,10 +196,10 @@ public final class Tree {
 			for (int i = 0; i < depth; ++i) {
 				System.out.print("\t");
 			}
-			System.out.print((char) childToken.intValue());
+			System.out.print(String.format("%2d ", childToken));
 			System.out.print(':');
 			for (int i = child.startPos(); i < child.endPos(pos); ++i) {
-				System.out.print((char) seq[i]);
+				System.out.print(String.format("%2d ", seq[i]));
 			}
 			System.out.println();
 			printSubtree(child, depth + 1);
@@ -214,7 +214,7 @@ public final class Tree {
 		if (node.parent() != ground) {
 			recPrint(sb, node.parent());
 			for (int i = node.startPos(); i < node.endPos(pos); ++i) {
-				sb.append((char) seq[i]);
+				sb.append(String.format("%2d ", seq[i]));
 			}
 		} else {
 			sb.append("@");
