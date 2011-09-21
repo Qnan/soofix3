@@ -1,6 +1,5 @@
 package soofix3;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.HashSet;
@@ -39,8 +38,8 @@ public class StringTree {
 			seq[j++] = -d - 1; // i-th document boundry marker
 			d++;
 		}
-		
-		tree = new Tree(seq);
+	
+		tree = new Tree(lexicon, seq);
 	}
 
 	public Map<Integer, List<Integer>> find(List<String> query) {

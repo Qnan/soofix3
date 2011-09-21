@@ -19,11 +19,13 @@ public final class Tree {
 	Node root, ground;
 	static int INFINITY = Integer.MAX_VALUE;
 	public static boolean logBuilding = false;
+	private Lexicon lexicon;
 
 	private Tree() {
 	}
 
-	public Tree(int[] seq) {
+	public Tree(Lexicon lexicon, int[] seq) {
+		this.lexicon = lexicon != null ? lexicon : new Lexicon(new LinkedList<String>());
 		this.seq = seq;
 		build();
 	}
@@ -147,9 +149,9 @@ public final class Tree {
 		Node explicitState = edgeSplit(suffix, token);
 		while (explicitState != null) {
 			explicitState.setChild(token, new Node(explicitState, pos - 1, INFINITY));
-			if (logBuilding) {
-				printTree();
-			}
+//			if (logBuilding) {
+//				printTree();
+//			}
 			if (oldRoot != root) {
 				nn.put(oldRoot, explicitState);
 			}
@@ -157,9 +159,9 @@ public final class Tree {
 			suffix.node = nn.get(suffix.node);
 			canonize(suffix, pos - 1);
 			explicitState = edgeSplit(suffix, token);
-			if (logBuilding) {
-				System.out.println(".");
-			}
+//			if (logBuilding) {
+//				System.out.println(".");
+//			}
 		}
 		if (oldRoot != root) {
 			nn.put(oldRoot, suffix.node);
@@ -177,13 +179,14 @@ public final class Tree {
 
 		Suffix suffix = new Suffix(current, 0);
 		for (pos = 1; pos <= seq.length; ++pos) {
-			if (logBuilding) {
-				System.out.println(nodeToString(suffix.node) + " -- " + suffix.from + " - " + Integer.toString(pos));
-				System.out.flush();
-			}
+//			if (logBuilding) {
+//				System.out.println(nodeToString(suffix.node) + " -- " + suffix.from + " - " + Integer.toString(pos));
+//				System.out.flush();
+//			}
 			update(suffix);
 			canonize(suffix, pos);
 			if (logBuilding) {
+				System.out.println("...");
 				printTree();
 			}
 		}
@@ -196,10 +199,10 @@ public final class Tree {
 			for (int i = 0; i < depth; ++i) {
 				System.out.print("\t");
 			}
-			System.out.print(String.format("%2d ", childToken));
+			System.out.print(getToken(childToken.intValue()));
 			System.out.print(':');
 			for (int i = child.startPos(); i < child.endPos(pos); ++i) {
-				System.out.print(String.format("%2d ", seq[i]));
+				System.out.print(" " + getToken(seq[i]));
 			}
 			System.out.println();
 			printSubtree(child, depth + 1);
@@ -210,11 +213,18 @@ public final class Tree {
 		printSubtree(root, 0);
 	}
 
+	private String getToken(int id) {
+		if (lexicon.hasId(id))
+			return lexicon.token(id);
+		return Integer.toString(id);
+	}
+
 	private void recPrint(StringBuilder sb, Node node) {
 		if (node.parent() != ground) {
 			recPrint(sb, node.parent());
 			for (int i = node.startPos(); i < node.endPos(pos); ++i) {
-				sb.append(String.format("%2d ", seq[i]));
+				sb.append(' ');
+				sb.append(getToken(seq[i]));
 			}
 		} else {
 			sb.append("@");

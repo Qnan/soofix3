@@ -28,7 +28,7 @@ public class Soofix3 {
 	public static int getFailPos(int[] seq) {
 		Tree tree = null;
 		try {
-			tree = new Tree(seq);
+			tree = new Tree(null, seq);
 		} catch (Exception ex) {
 		} finally {
 			return _lastPos;
@@ -55,7 +55,7 @@ public class Soofix3 {
 		Random rnd = new Random(seed);
 		makeRandomCharSeq(target, last, rnd.nextInt());
 		String targetStr = seqToString(target);
-		Tree tree = new Tree(target);
+		Tree tree = new Tree(null, target);
 		int treeTotal = 0, stringTotal = 0;
 		for (int i = 0; i < queryNum; ++i) {
 			makeRandomCharSeq(query, last, rnd.nextInt());

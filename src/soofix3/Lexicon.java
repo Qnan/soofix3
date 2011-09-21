@@ -10,7 +10,6 @@ public class Lexicon {
 	final int size;
 
 	Lexicon(Iterable<String> tokens) {
-		lexicon.put(null, -1);
 		int cnt = 0;
 		for (String token : tokens) {
 			if (!lexicon.containsKey(token)) {
