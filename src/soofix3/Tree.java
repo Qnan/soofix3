@@ -7,9 +7,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class Tree {
 
@@ -40,7 +42,7 @@ public final class Tree {
 
 	private void collectLeafOffsets(Map<Integer, List<Integer>> leafOffsets, Node node, int offset) {
 		if (node.isLeaf()) {
-			int doc = -seq[node.endPos() - 1] - 1;
+			int doc = getDoc(node);
 			if (doc < 0) {
 				doc = -1; // in case there's no document delimiter
 			}
@@ -55,6 +57,11 @@ public final class Tree {
 				collectLeafOffsets(leafOffsets, child, offset + child.length(pos));
 			}
 		}
+	}
+
+	private int getDoc(Node node) {
+		int doc = -seq[node.endPos() - 1] - 1;
+		return doc;
 	}
 
 	public int match(Ref<Node> endNodeRef, int[] seq) {
@@ -203,6 +210,35 @@ public final class Tree {
 				printTree();
 			}
 		}
+	}
+
+	private Set<Integer> clustersCollect(Map<Node, Set<Integer>> clusters, Node node) {
+		Set<Integer> cluster = new HashSet<Integer>();
+		if (node.isLeaf()) {
+			cluster.add(getDoc(node));
+		} else {
+			for (Integer token : node.tokens()) {
+				Set<Integer> subCluster = clustersCollect(clusters, node.getChild(token));
+				cluster.addAll(subCluster);
+			}
+		}
+		clusters.put(node, cluster);
+		return cluster;
+	}
+
+	public Map<Node, Set<Integer>> getBaseClusters() {
+		Map<Node, Set<Integer>> clusters = new HashMap<Node, Set<Integer>>();
+		clustersCollect(clusters, root);
+		for (Node node : clusters.keySet()) {
+			if (clusters.get(node).size() > 1) {
+				System.out.println(nodeToString(node));
+				for (Integer doc : clusters.get(node)) {
+					System.out.format(" %d", doc);
+				}
+				System.out.println();
+			}
+		}
+		return clusters;
 	}
 
 	private void printSubtree(Node node, int depth) {
