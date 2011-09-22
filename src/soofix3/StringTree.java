@@ -3,7 +3,6 @@ package soofix3;
 import java.util.HashMap;
 import java.util.List;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 
@@ -12,7 +11,7 @@ public class StringTree {
 	List<List<String>> documents;
 	Lexicon lexicon;
 	int[] docId, seq, docStart;
-	Tree tree;
+	public Tree tree;
 
 	public StringTree(List<List<String>> documents) {
 		this.documents = documents;

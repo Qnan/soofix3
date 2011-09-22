@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 public final class Tree {
@@ -55,6 +56,33 @@ public final class Tree {
 			for (Integer token : node.tokens()) {
 				Node child = node.getChild(token);
 				collectLeafOffsets(leafOffsets, child, offset + child.length(pos));
+			}
+		}
+	}
+
+	private Map<Node, Node> findConnectedComponents(Map<Node, Set<Integer>> clusters, Map<Node, List<Node>> graph) {
+		Map<Node, Node> connectedComponents = new HashMap<Node, Node>();
+		for (Node ref : clusters.keySet()) {
+			if (!connectedComponents.containsKey(ref)) {
+				findConnectedComponent(ref, connectedComponents, graph);
+			}
+		}
+		return connectedComponents;
+	}
+
+	private void findConnectedComponent(Node ref, Map<Node, Node> connectedComponents, Map<Node, List<Node>> graph) {
+		Queue<Node> queue = new LinkedList<Node>();
+		queue.add(ref);
+		while (!queue.isEmpty()) {
+			Node node = queue.poll();
+			if (connectedComponents.get(node) == null) { // mark as processed
+				for (Node neighbor : graph.get(node)) {
+					if (!connectedComponents.containsKey(neighbor)) { // node is neither processed, nor in the queue
+						queue.add(neighbor);
+						connectedComponents.put(neighbor, null); // mark as added to the queue
+					}
+				}
+				connectedComponents.put(node, ref); // mark as processed
 			}
 		}
 	}
@@ -156,6 +184,32 @@ public final class Tree {
 		}
 	}
 
+	private Map<Node, List<Node>> makeGraph(Map<Node, Set<Integer>> clusters) {
+		Map<Node, List<Node>> graph = new HashMap<Node, List<Node>>();
+		for (Node node : clusters.keySet()) {
+			graph.put(node, new LinkedList<Node>());
+		}
+		// create a connectivity table for the graph
+		for (Node node1 : clusters.keySet()) {
+			for (Node node2 : clusters.keySet()) {
+				if (node1 != node2) {
+					Set<Integer> cluster1 = clusters.get(node1);
+					Set<Integer> cluster2 = clusters.get(node2);
+					int intersectionSz = 0;
+					for (Integer doc : cluster1) {
+						if (cluster2.contains(doc)) {
+							intersectionSz++;
+						}
+					}
+					if (intersectionSz > 0.5 * Math.max(cluster1.size(), cluster2.size())) {
+						graph.get(node1).add(node2);
+					}
+				}
+			}
+		}
+		return graph;
+	}
+
 	private void update(Suffix suffix) {
 		// s -> suffix.node
 		// k -> suffix.from
@@ -224,6 +278,35 @@ public final class Tree {
 		}
 		clusters.put(node, cluster);
 		return cluster;
+	}
+
+	public Map<Node, Set<Integer>> getClusters() {
+		Map<Node, Set<Integer>> clusters = getBaseClusters();
+		clusters.remove(root); // remove the root cluster?..
+		Map<Node, List<Node>> graph = makeGraph(clusters); // O(n^2)
+		Map<Node, Node> connectedComponents = findConnectedComponents(clusters, graph);
+
+		Map<Node, Set<Integer>> mergedClusters = new HashMap<Node, Set<Integer>>();
+		for (Node node : connectedComponents.keySet()) {
+			Node ref = connectedComponents.get(node);
+			if (!mergedClusters.containsKey(ref)) {
+				mergedClusters.put(ref, new HashSet<Integer>());
+			}
+			mergedClusters.get(ref).addAll(clusters.get(node));
+		}
+
+		// print the resulting clusters
+		System.out.println("#########################");
+		for (Node node : mergedClusters.keySet()) {
+			for (Integer doc : mergedClusters.get(node)) {
+				System.out.print(" ");
+				System.out.print(doc);
+			}
+			System.out.println();
+		}
+		System.out.println("#########################");
+
+		return mergedClusters;
 	}
 
 	public Map<Node, Set<Integer>> getBaseClusters() {

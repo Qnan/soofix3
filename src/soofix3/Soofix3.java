@@ -135,6 +135,7 @@ public class Soofix3 {
 		List<List<String>> queries = readDataFile(fileQuery);
 
 		StringTree st = new StringTree(documents);
+		st.tree.getClusters();
 		for (List<String> query : queries) {
 			Map<Integer, List<Integer>> matches = st.find(query);
 			for (String word : query) {
@@ -180,13 +181,13 @@ public class Soofix3 {
 	}
 
 	public static void main(String[] args) throws IOException {
-		testWord();
+//		testWord();
 //
 //		testSearch(200000, 3, 1000, 'z', 1, true);
 //		System.out.println(findShortestFailingSeed(1000, 10000, 'h'));
 
-//		Tree.logBuilding = true;
-//		run(args);
+		Tree.logBuilding = true;
+		run(args);
 	}
 
 }
