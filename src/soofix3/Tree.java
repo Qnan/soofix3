@@ -5,6 +5,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -21,6 +22,7 @@ public final class Tree {
 	public static boolean logBuilding = false;
 	private Lexicon lexicon;
 	int nextDocEnd;
+	List<Integer> docOffset;
 
 	private Tree() {
 	}
@@ -36,9 +38,17 @@ public final class Tree {
 		return find(seq) >= 0;
 	}
 
-	private void collectLeafOffsets(List<Integer> leafOffsets, Node node, int offset) {
+	private void collectLeafOffsets(Map<Integer, List<Integer>> leafOffsets, Node node, int offset) {
 		if (node.isLeaf()) {
-			leafOffsets.add(offset);
+			int doc = -seq[node.endPos() - 1] - 1;
+			if (doc < 0) {
+				doc = -1; // in case there's no document delimiter
+			}
+			int dOff = doc < 0 ? 0 : docOffset.get(doc);
+			if (!leafOffsets.containsKey(doc)) {
+				leafOffsets.put(doc, new LinkedList<Integer>());
+			}
+			leafOffsets.get(doc).add(node.endPos() - offset - dOff);
 		} else {
 			for (Integer token : node.tokens()) {
 				Node child = node.getChild(token);
@@ -66,25 +76,23 @@ public final class Tree {
 		return j;
 	}
 
+	// doesn't support the notion of multiple documents
 	public int find(int[] seq) {
 		Ref<Node> endNodeRef = new Ref<Node>();
 		int j = match(endNodeRef, seq);
 		return j - seq.length;
 	}
 
-	public List<Integer> findAll(int[] seq) {
+	public Map<Integer, List<Integer>> findAll(int[] seq) {
 		Ref<Node> endNodeRef = new Ref<Node>();
 		int j = match(endNodeRef, seq);
-		List<Integer> leafOffsets = new LinkedList<Integer>();
+		Map<Integer, List<Integer>> leafOffsets = new HashMap<Integer, List<Integer>>();
 		if (j < 0) {
 			return leafOffsets; // return empty list
 		}
 		Node node = endNodeRef.get();
-		int offset = node.endPos(pos) - j;
+		int offset = node.endPos(pos) - j + seq.length;
 		collectLeafOffsets(leafOffsets, node, offset);
-		for (int i = 0; i < leafOffsets.size(); ++i) {
-			leafOffsets.set(i, this.seq.length - leafOffsets.get(i) - seq.length);
-		}
 		return leafOffsets;
 	}
 
@@ -173,6 +181,8 @@ public final class Tree {
 		nn.put(root, ground);
 		Node current = root;
 		nextDocEnd = 0;
+		docOffset = new ArrayList<Integer>();
+		docOffset.add(0);
 
 		Suffix suffix = new Suffix(current, 0);
 		for (pos = 1; pos <= seq.length; ++pos) {
@@ -184,6 +194,7 @@ public final class Tree {
 						break;
 					}
 				}
+				docOffset.add(nextDocEnd);
 			}
 			update(suffix);
 			canonize(suffix, pos);

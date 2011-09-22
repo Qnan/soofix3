@@ -22,6 +22,18 @@ public class Lexicon {
 		size = cnt;
 	}
 
+	Lexicon(Map<String, Integer> map) {
+		for (String token : map.keySet()) {
+			if (!lexicon.containsKey(token)) {
+				lexicon.put(token, map.get(token));
+			}
+		}
+		for (String token : lexicon.keySet()) {
+			inv.put(lexicon.get(token), token);
+		}
+		size = lexicon.size();
+	}
+
 	int id(String token) {
 		return lexicon.get(token);
 	}

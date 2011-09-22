@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -23,31 +24,6 @@ public class Soofix3 {
 		for (int i = 0; i < seq.length; ++i) {
 			seq[i] = 'a' + rnd.nextInt(last - 'a' + 1);
 		}
-	}
-
-	public static int getFailPos(int[] seq) {
-		Tree tree = null;
-		try {
-			tree = new Tree(null, seq);
-		} catch (Exception ex) {
-		} finally {
-			return _lastPos;
-		}
-	}
-
-	public static int findShortestFailingSeed(int length, int iter, char last) {
-		int seq[] = new int[length];
-		int bestSeed = -1, minLength = length;
-		for (int seed = 0; seed < iter; ++seed) {
-			makeRandomCharSeq(seq, last, seed);
-			int lastPos = getFailPos(seq);
-			if (lastPos < minLength) {
-				minLength = lastPos;
-				bestSeed = seed;
-			}
-		}
-		System.out.println(minLength);
-		return bestSeed;
 	}
 
 	public static void testSearch(int targetLength, int queryLength, int queryNum, char last, int seed, boolean testFindAll) {
@@ -86,7 +62,10 @@ public class Soofix3 {
 
 			if (testFindAll) {
 				// tree
-				treeResAll = new LinkedList<Integer>(tree.findAll(query));
+				Map<Integer, List<Integer>> map = tree.findAll(query);
+				treeResAll = new LinkedList<Integer>();
+				if (map.containsKey(-1))
+					treeResAll.addAll(map.get(-1));
 				Collections.sort(treeResAll);
 
 				// string
@@ -177,15 +156,37 @@ public class Soofix3 {
 		}
 	}
 
+	private static void testWord() {
+		int seq[] = new int[]{'m','i','s','s','i','s','s','i','p','p','i'};
+		printSeq(seq);
+		Tree.logBuilding = true;
+		Map<String, Integer> map = new HashMap<String, Integer>();
+		for (int i = 0; i < seq.length; ++i) {
+			map.put(String.format("%c", (char)seq[i]), seq[i]);
+		}
+		Lexicon lexicon = new Lexicon(map);
+		Tree tree = new Tree(lexicon, seq);
+		int[] qseq = new int[]{'s','s','i'};
+		Map<Integer, List<Integer>> occur = tree.findAll(qseq);
+		for (Integer i : occur.keySet()) {
+			System.out.print(i);
+			System.out.print(": ");
+			for (Integer j : occur.get(i)) {
+				System.out.print(" ");
+				System.out.print(j);
+			}
+			System.out.println();
+		}
+	}
+
 	public static void main(String[] args) throws IOException {
-//		int seq[] = new int[]{'m','i','s','s','i','s','s','i','p','p','i'};
-//		printSeq(seq);
-//		Tree.logBuilding = true;
-//		Tree tree = new Tree(seq);
+		testWord();
 //
 //		testSearch(200000, 3, 1000, 'z', 1, true);
 //		System.out.println(findShortestFailingSeed(1000, 10000, 'h'));
 
-		run(args);
+//		Tree.logBuilding = true;
+//		run(args);
 	}
+
 }

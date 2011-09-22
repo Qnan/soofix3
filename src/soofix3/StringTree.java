@@ -51,15 +51,6 @@ public class StringTree {
 			}
 			qseq[i] = lexicon.id(query.get(i));
 		}
-		List<Integer> positions = tree.findAll(qseq);
-		for (Integer pos : positions) {
-			int d = docId[pos];
-			int p = pos - docStart[d];
-			if (!ret.containsKey(d)) {
-				ret.put(d, new LinkedList<Integer>());
-			}
-			ret.get(d).add(p);
-		}
-		return ret;
+		return tree.findAll(qseq);
 	}
 }
