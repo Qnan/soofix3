@@ -20,6 +20,7 @@ public final class Tree {
 	static int INFINITY = Integer.MAX_VALUE;
 	public static boolean logBuilding = false;
 	private Lexicon lexicon;
+	int nextDocEnd;
 
 	private Tree() {
 	}
@@ -27,6 +28,7 @@ public final class Tree {
 	public Tree(Lexicon lexicon, int[] seq) {
 		this.lexicon = lexicon != null ? lexicon : new Lexicon(new LinkedList<String>());
 		this.seq = seq;
+		this.nextDocEnd = -1;
 		build();
 	}
 
@@ -148,10 +150,7 @@ public final class Tree {
 		int token = seq[pos - 1];
 		Node explicitState = edgeSplit(suffix, token);
 		while (explicitState != null) {
-			explicitState.setChild(token, new Node(explicitState, pos - 1, INFINITY));
-//			if (logBuilding) {
-//				printTree();
-//			}
+			explicitState.setChild(token, new Node(explicitState, pos - 1, nextDocEnd));
 			if (oldRoot != root) {
 				nn.put(oldRoot, explicitState);
 			}
@@ -159,9 +158,6 @@ public final class Tree {
 			suffix.node = nn.get(suffix.node);
 			canonize(suffix, pos - 1);
 			explicitState = edgeSplit(suffix, token);
-//			if (logBuilding) {
-//				System.out.println(".");
-//			}
 		}
 		if (oldRoot != root) {
 			nn.put(oldRoot, suffix.node);
@@ -176,13 +172,19 @@ public final class Tree {
 		}
 		nn.put(root, ground);
 		Node current = root;
+		nextDocEnd = 0;
 
 		Suffix suffix = new Suffix(current, 0);
 		for (pos = 1; pos <= seq.length; ++pos) {
-//			if (logBuilding) {
-//				System.out.println(nodeToString(suffix.node) + " -- " + suffix.from + " - " + Integer.toString(pos));
-//				System.out.flush();
-//			}
+			// detect the next terminator symbol
+			if (pos > nextDocEnd) {
+				for (; nextDocEnd < seq.length; ++nextDocEnd) {
+					if (seq[nextDocEnd] < 0) {
+						nextDocEnd++;
+						break;
+					}
+				}
+			}
 			update(suffix);
 			canonize(suffix, pos);
 			if (logBuilding) {
@@ -190,7 +192,6 @@ public final class Tree {
 				printTree();
 			}
 		}
-		pos = seq.length; // TODO: unhack
 	}
 
 	private void printSubtree(Node node, int depth) {
@@ -214,8 +215,9 @@ public final class Tree {
 	}
 
 	private String getToken(int id) {
-		if (lexicon.hasId(id))
+		if (lexicon.hasId(id)) {
 			return lexicon.token(id);
+		}
 		return Integer.toString(id);
 	}
 
