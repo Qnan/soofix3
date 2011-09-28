@@ -7,9 +7,10 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -21,22 +22,25 @@ public class Soofix3 {
 
 	public static int _lastPos;
 
-	public static void makeRandomCharSeq(int[] seq, char last, int seed) {
+	public static void makeRandomCharSeq(List<Integer> seq, int length, char last, int seed) {
 		Random rnd = new Random(seed);
-		for (int i = 0; i < seq.length; ++i) {
-			seq[i] = 'a' + rnd.nextInt(last - 'a' + 1);
+		seq.clear();
+		for (int i = 0; i < length; ++i) {
+			seq.add('a' + rnd.nextInt(last - 'a' + 1));
 		}
 	}
 
 	public static void testSearch(int targetLength, int queryLength, int queryNum, char last, int seed, boolean testFindAll) {
-		int[] target = new int[targetLength], query = new int[queryLength];
+		List<Integer> target = new ArrayList<Integer>(targetLength);
+		List<Integer> query = new ArrayList<Integer>(queryLength);
 		Random rnd = new Random(seed);
-		makeRandomCharSeq(target, last, rnd.nextInt());
+		makeRandomCharSeq(target, targetLength, last, rnd.nextInt());
 		String targetStr = seqToString(target);
-		Tree tree = new Tree(null, target);
+		Tree tree = new Tree(null);
+		tree.add(target);
 		int treeTotal = 0, stringTotal = 0;
 		for (int i = 0; i < queryNum; ++i) {
-			makeRandomCharSeq(query, last, rnd.nextInt());
+			makeRandomCharSeq(query, queryLength, last, rnd.nextInt());
 			String queryStr = seqToString(query);
 			int treeRes = -2, stringRes = -2;
 			List<Integer> treeResAll = null, stringResAll = null;
@@ -66,8 +70,8 @@ public class Soofix3 {
 				// tree
 				Map<Integer, List<Integer>> map = tree.findAll(query);
 				treeResAll = new LinkedList<Integer>();
-				if (map.containsKey(-1)) {
-					treeResAll.addAll(map.get(-1));
+				if (map.containsKey(0)) {
+					treeResAll.addAll(map.get(0));
 				}
 				Collections.sort(treeResAll);
 
@@ -95,9 +99,9 @@ public class Soofix3 {
 		System.out.println("stringTotal: " + stringTotal / 1000000);
 	}
 
-	private static void printSeq(int[] seq) {
-		for (int i = 0; i < seq.length; ++i) {
-			System.out.print((char) seq[i]);
+	private static void printSeq(Lexicon lexicon, List<Integer> seq) {
+		for (int i = 0; i < seq.size(); ++i) {
+			System.out.print(lexicon.token(seq.get(i)));
 		}
 		System.out.println();
 	}
@@ -112,10 +116,10 @@ public class Soofix3 {
 		return documents;
 	}
 
-	private static String seqToString(int[] seq) {
+	private static String seqToString(List<Integer> seq) {
 		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < seq.length; ++i) {
-			sb.append((char) seq[i]);
+		for (int i = 0; i < seq.size(); ++i) {
+			sb.append((char) seq.get(i).intValue());
 		}
 		return sb.toString();
 	}
@@ -145,31 +149,33 @@ public class Soofix3 {
 		StringTree st = new StringTree(documents);
 		long t1 = System.currentTimeMillis();
 		System.out.format("Tree built: %f\n", (t1 - t0) / 1000.0);
-		
+
 		Map<String, List<Integer>> clusters = st.clusters();
 		long t2 = System.currentTimeMillis();
 		System.out.format("Clustering done: %f\n", (t2 - t1) / 1000.0);
-		
+
 		BufferedWriter writer = new BufferedWriter(new FileWriter("clusters.out"));
 		for (String label : clusters.keySet()) {
 			String[] split = label.split("\n");
 			for (int i = 0; i < split.length; ++i) {
-				if (i > 0)
+				if (i > 0) {
 					writer.append(" & ");
+				}
 				writer.append(split[i]);
 			}
 			writer.append("\n");
-			 
+
 			for (int i = 0; i < clusters.get(label).size(); ++i) {
-				if (i > 0)
+				if (i > 0) {
 					writer.append(" ");
+				}
 				writer.append(clusters.get(label).get(i).toString());
 			}
 			writer.append("\n");
 		}
 		long t3 = System.currentTimeMillis();
 		System.out.format("Clusters stored: %f\n", (t3 - t2) / 1000.0);
-		
+
 		if (queries != null) {
 			for (List<String> query : queries) {
 				Map<Integer, List<Integer>> matches = st.find(query);
@@ -194,16 +200,26 @@ public class Soofix3 {
 	}
 
 	private static void testWord() {
-		int seq[] = new int[]{'m', 'i', 's', 's', 'i', 's', 's', 'i', 'p', 'p', 'i'};
-		printSeq(seq);
-//		Tree.logBuilding = true;
-		Map<String, Integer> map = new HashMap<String, Integer>();
-		for (int i = 0; i < seq.length; ++i) {
-			map.put(String.format("%c", (char) seq[i]), seq[i]);
+		String word = "mississippi";
+		List<Integer> seq = new ArrayList<Integer>(word.length());
+		List<String> chars = new ArrayList<String>(word.length());
+		for (int i = 0; i < word.length(); ++i) {
+			chars.add(String.format("%c", word.charAt(i)));
 		}
-		Lexicon lexicon = new Lexicon(map);
-		Tree tree = new Tree(lexicon, seq);
-		int[] qseq = new int[]{'s', 's', 'i'};
+		Lexicon lexicon = new Lexicon(new HashSet<String>(chars));
+		for (int i = 0; i < chars.size(); ++i) {
+			seq.add(lexicon.id(chars.get(i)));
+		}
+		printSeq(lexicon, seq);
+
+		Tree tree = new Tree(lexicon);
+		tree.add(seq);
+		String query = "ssi";
+		List<Integer> qseq = new ArrayList<Integer>(query.length());
+		for (int i = 0; i < query.length(); ++i) {
+			qseq.add(lexicon.id(String.format("%c", query.charAt(i))));
+		}
+
 		Map<Integer, List<Integer>> occur = tree.findAll(qseq);
 		for (Integer i : occur.keySet()) {
 			System.out.print(i);

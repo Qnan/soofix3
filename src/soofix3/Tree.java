@@ -1,13 +1,6 @@
 package soofix3;
 
-import com.sun.xml.internal.rngom.ast.builder.GrammarSection.Combine;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,7 +16,7 @@ public final class Tree {
 
 	public static String signature = "AIMT-ST";
 	Map<Node, Node> nn = new HashMap<Node, Node>();
-	int[] seq;
+	ArrayList<Integer> seq;
 	int pos;
 	Node root, ground;
 	static int INFINITY = Integer.MAX_VALUE;
@@ -31,18 +24,17 @@ public final class Tree {
 	private Lexicon lexicon;
 	int nextDocEnd;
 	List<Integer> docOffset;
-
-	private Tree() {
+	
+	public Tree(Lexicon lexicon) {
+		this(lexicon, 0);
 	}
 
-	public Tree(Lexicon lexicon, int[] seq) {
+	public Tree(Lexicon lexicon, int totalSz) {
 		this.lexicon = lexicon != null ? lexicon : new Lexicon(new LinkedList<String>());
-		this.seq = seq;
-		this.nextDocEnd = -1;
-		build();
+		init(totalSz);
 	}
-
-	public boolean contains(int[] seq) {
+	
+	public boolean contains(List<Integer> seq) {
 		return find(seq) >= 0;
 	}
 
@@ -93,21 +85,21 @@ public final class Tree {
 	}
 
 	private int getDoc(Node node) {
-		int doc = -seq[node.endPos() - 1] - 1;
+		int doc = -seq.get(node.endPos() - 1) - 1;
 		return doc;
 	}
 
-	public int match(Ref<Node> endNodeRef, int[] seq) {
+	public int match(Ref<Node> endNodeRef, List<Integer> seq) {
 		Node node = root;
 		int j = -1;
-		for (int i = 0; i < seq.length;) {
-			int token = seq[i];
+		for (int i = 0; i < seq.size();) {
+			int token = seq.get(i);
 			if (!node.hasChild(token)) {
 				return -1;
 			}
 			node = node.getChild(token);
-			for (j = node.startPos(); j < node.endPos(pos) && i < seq.length; ++j, ++i) {
-				if (seq[i] != this.seq[j]) {
+			for (j = node.startPos(); j < node.endPos(pos) && i < seq.size(); ++j, ++i) {
+				if (seq.get(i) < 0 || seq.get(i) != this.seq.get(j)) {
 					return -1;
 				}
 			}
@@ -117,13 +109,13 @@ public final class Tree {
 	}
 
 	// doesn't support the notion of multiple documents
-	public int find(int[] seq) {
+	public int find(List<Integer> seq) {
 		Ref<Node> endNodeRef = new Ref<Node>();
 		int j = match(endNodeRef, seq);
-		return j - seq.length;
+		return j - seq.size();
 	}
 
-	public Map<Integer, List<Integer>> findAll(int[] seq) {
+	public Map<Integer, List<Integer>> findAll(List<Integer> seq) {
 		Ref<Node> endNodeRef = new Ref<Node>();
 		int j = match(endNodeRef, seq);
 		Map<Integer, List<Integer>> leafOffsets = new HashMap<Integer, List<Integer>>();
@@ -131,7 +123,7 @@ public final class Tree {
 			return leafOffsets; // return empty list
 		}
 		Node node = endNodeRef.get();
-		int offset = node.endPos(pos) - j + seq.length;
+		int offset = node.endPos(pos) - j + seq.size();
 		collectLeafOffsets(leafOffsets, node, offset);
 		return leafOffsets;
 	}
@@ -151,16 +143,16 @@ public final class Tree {
 				return suffix.node; // state already explicit
 			}
 		} else {
-			Node next = suffix.node.getChild(seq[suffix.from]);
+			Node next = suffix.node.getChild(seq.get(suffix.from));
 			int nextPos = next.startPos() + pos - suffix.from - 1;
-			if (token == seq[nextPos]) {
+			if (token == seq.get(nextPos)) {
 				return null; // end point
 			} else {
 				// do split
 				Node newNode = new Node(suffix.node, next.startPos(), nextPos);
-				suffix.node.setChild(seq[next.startPos()], newNode);
+				suffix.node.setChild(seq.get(next.startPos()), newNode);
 				next.setStartPos(nextPos);
-				newNode.setChild(seq[nextPos], next);
+				newNode.setChild(seq.get(nextPos), next);
 				return newNode;
 			}
 		}
@@ -175,7 +167,7 @@ public final class Tree {
 			if (suffixLen == 0) {
 				return;
 			}
-			int firstToken = seq[suffix.from];
+			int firstToken = seq.get(suffix.from);
 			if (!suffix.node.hasChild(firstToken)) {
 				return;
 			}
@@ -270,7 +262,7 @@ public final class Tree {
 		// i -> pos
 		// r -> explicitState
 		Node oldRoot = root;
-		int token = seq[pos - 1];
+		int token = seq.get(pos - 1);
 		Node explicitState = edgeSplit(suffix, token);
 		while (explicitState != null) {
 			explicitState.setChild(token, new Node(explicitState, pos - 1, nextDocEnd));
@@ -287,30 +279,35 @@ public final class Tree {
 		}
 	}
 
-	private void build() {
+	Node current;
+	Suffix suffix;
+	private void init(int totalSz) {
 		ground = new Node(null, -1, -1);
 		root = new Node(ground, -1, 0);
-		for (int i = 0; i < seq.length; ++i) {
-			ground.setChild(seq[i], root);
-		}
 		nn.put(root, ground);
-		Node current = root;
+		current = root;
 		nextDocEnd = 0;
 		docOffset = new ArrayList<Integer>();
-		docOffset.add(0);
+		seq = new ArrayList<Integer>(totalSz);
+		
+		suffix = new Suffix(current, 0);
+		pos = 1;
+	}
 
-		Suffix suffix = new Suffix(current, 0);
-		for (pos = 1; pos <= seq.length; ++pos) {
-			// detect the next terminator symbol
-			if (pos > nextDocEnd) {
-				for (; nextDocEnd < seq.length; ++nextDocEnd) {
-					if (seq[nextDocEnd] < 0) {
-						nextDocEnd++;
-						break;
-					}
-				}
-				docOffset.add(nextDocEnd);
-			}
+	public void add(List<Integer> doc) {
+		docOffset.add(seq.size());
+		seq.addAll(doc);
+		seq.add(-docOffset.size()); // append document end marker
+		this.nextDocEnd = seq.size();
+		for (int i = 0; i < doc.size(); ++i) {
+			ground.setChild(doc.get(i), root);
+		}
+		ground.setChild(-docOffset.size(), root);
+		build();
+	}
+	
+	private void build() {
+		for (; pos <= seq.size(); ++pos) {
 			update(suffix);
 			canonize(suffix, pos);
 			if (logBuilding) {
@@ -376,24 +373,12 @@ public final class Tree {
 		for (Node node : mergedClusters.keySet()) {
 			List<List<Integer>> summary = clusterSummaries.get(node);
 			Set<Integer> cluster = mergedClusters.get(node);
-//			if (namedClusters.containsKey(summary))
-//				throw new Error("two clusters should not have the same summary");
+			if (namedClusters.containsKey(summary))
+				throw new Error("two clusters should not have the same summary");
 			namedClusters.put(summary, new ArrayList<Integer>(cluster));
 		}
 		long t3 = System.currentTimeMillis();
 		System.out.format("\tClustering, merging: %f\n", (t3 - t2) / 1000.0);
-
-//		// print the resulting clusters
-//		System.out.println("#########################");
-//		for (Node node : mergedClusters.keySet()) {
-//			System.out.println(clusterSummaries.get(node));
-//			for (Integer doc : mergedClusters.get(node)) {
-//				System.out.print(" ");
-//				System.out.print(doc);
-//			}
-//			System.out.println();
-//		}
-//		System.out.println("#########################");
 
 		return namedClusters;
 	}
@@ -401,15 +386,6 @@ public final class Tree {
 	public Map<Node, Set<Integer>> getBaseClusters() {
 		Map<Node, Set<Integer>> clusters = new HashMap<Node, Set<Integer>>();
 		clustersCollect(clusters, root);
-//		for (Node node : clusters.keySet()) {
-//			if (clusters.get(node).size() > 1) {
-//				System.out.println(nodeToString(node));
-//				for (Integer doc : clusters.get(node)) {
-//					System.out.format(" %d", doc);
-//				}
-//				System.out.println();
-//			}
-//		}
 		return clusters;
 	}
 
@@ -422,7 +398,7 @@ public final class Tree {
 			System.out.print(getToken(childToken.intValue()));
 			System.out.print(':');
 			for (int i = child.startPos(); i < child.endPos(pos); ++i) {
-				System.out.print(" " + getToken(seq[i]));
+				System.out.print(" " + getToken(seq.get(i)));
 			}
 			System.out.println();
 			printSubtree(child, depth + 1);
@@ -445,7 +421,7 @@ public final class Tree {
 			recPrint(sb, node.parent());
 			for (int i = node.startPos(); i < node.endPos(pos); ++i) {
 				sb.append(' ');
-				sb.append(getToken(seq[i]));
+				sb.append(getToken(seq.get(i)));
 			}
 		} else {
 			sb.append("@");
@@ -462,7 +438,7 @@ public final class Tree {
 		if (node.parent() != ground) {
 			recCollect(list, node.parent());
 			for (int i = node.startPos(); i < node.endPos(pos); ++i) {
-				list.add(seq[i]);
+				list.add(seq.get(i));
 			}
 		}
 	}
@@ -481,98 +457,5 @@ public final class Tree {
 			cnt = enumnodes(nodes, ids, cnt, node.getChild(token));
 		}
 		return cnt;
-	}
-
-	private void storeNodeData(DataOutputStream dos, Map<Node, Integer> ids, Node node) throws IOException {
-		dos.writeInt(node.startPos());
-		dos.writeInt(node.endPos());
-		dos.writeInt(node.tokens().size());
-		for (Integer token : node.tokens()) {
-			dos.writeInt(token);
-			dos.writeInt(ids.get(node.getChild(token)));
-		}
-	}
-
-	private void readNodeData(Node node, Map<Integer, Node> nodes, DataInputStream dis) throws IOException {
-		node.setStartPos(dis.readInt());
-		node.setEndPos(dis.readInt());
-		int num = dis.readInt();
-		for (int i = 0; i < num; ++i) {
-			int token = dis.readInt();
-			int nodeid = dis.readInt();
-			Node child = nodes.get(nodeid);
-			node.setChild(token, child);
-			child.setParent(node);
-		}
-	}
-
-	public void save(OutputStream os) throws IOException {
-		DataOutputStream dos = new DataOutputStream(os);
-		dos.writeBytes(signature); // item 00
-		dos.writeInt(seq.length); // item 01
-		for (int i = 0; i < seq.length; ++i) { // item 02
-			dos.writeInt(seq[i]);
-		}
-		Map<Integer, Node> nodes = new HashMap<Integer, Node>();
-		Map<Node, Integer> ids = new HashMap<Node, Integer>();
-		nodes.put(0, ground);
-		ids.put(ground, 0);
-		int total = enumnodes(nodes, ids, 1, root);
-		dos.writeInt(total); // item 03
-		// skip ground
-		for (int i = 1; i < total; ++i) // item 04
-		{
-			storeNodeData(dos, ids, nodes.get(i));
-		}
-
-		dos.writeInt(nn.size()); // item 05
-		for (Node node : nn.keySet()) { // item 06
-			dos.writeInt(ids.get(node));
-			dos.writeInt(ids.get(nn.get(node)));
-		}
-	}
-
-	private void load(InputStream is) throws IOException {
-		DataInputStream dis = new DataInputStream(is);
-		char[] signatureBuf = new char[signature.length()];
-		for (int i = 0; i < signatureBuf.length; ++i) // item 00
-		{
-			signatureBuf[i] = (char) dis.readByte();
-		}
-		if (!new String(signatureBuf).equals(signature)) {
-			throw new java.io.IOException("Signature is not valid");
-		}
-		int length = dis.readInt(); // item 01
-		seq = new int[length];
-		for (int i = 0; i < length; ++i) { // item 02
-			seq[i] = dis.readInt();
-		}
-		pos = seq.length;
-		int total = dis.readInt(); // item 03
-		Map<Integer, Node> nodes = new HashMap<Integer, Node>();
-		for (int i = 0; i < total; ++i) {
-			nodes.put(i, new Node(null, -1, -1));
-		}
-		ground = nodes.get(0);
-		for (int i = 0; i < seq.length; ++i) {
-			ground.setChild(seq[i], root);
-		}
-		root = nodes.get(1);
-		for (int i = 1; i < total; ++i) {  // item 04
-			readNodeData(nodes.get(i), nodes, dis);
-		}
-
-		int nSuffixLinks = dis.readInt(); // item 05
-		for (int i = 0; i < nSuffixLinks; ++i) { // item 06
-			int from = dis.readInt();
-			int to = dis.readInt();
-			nn.put(nodes.get(from), nodes.get(to));
-		}
-	}
-
-	public static Tree fromStream(InputStream is) throws IOException {
-		Tree tree = new Tree();
-		tree.load(is);
-		return tree;
 	}
 }

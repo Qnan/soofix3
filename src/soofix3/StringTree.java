@@ -1,9 +1,9 @@
 package soofix3;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 
@@ -11,49 +11,41 @@ public class StringTree {
 
 	List<List<String>> documents;
 	Lexicon lexicon;
-	int[] docId, seq, docStart;
+	List<Integer> seq;
 	public Tree tree;
 
 	public StringTree(List<List<String>> documents) {
 		this.documents = documents;
 		System.out.println("Total " + documents.size() + " documents");
 		Set<String> words = new HashSet<String>();
-		int totalSz = 0;
 		for (List<String> doc : documents) {
 			words.addAll(doc);
-			totalSz += doc.size() + 1;
 		}
 		lexicon = new Lexicon(words);
-		seq = new int[totalSz];
-		docId = new int[totalSz];
-		docStart = new int[documents.size()];
-		int j = 0, d = 0;
-		for (List<String> doc : documents) {
-			docStart[d] = j;
+		tree = new Tree(lexicon);
+		List<Integer> seq1;
+		for (int d = 0; d < documents.size(); ++d) {
+			List<String> doc = documents.get(d);
+			seq1 = new ArrayList<Integer>(doc.size());
 			for (int k = 0; k < doc.size(); ++k) {
-				docId[j] = d;
-				seq[j++] = lexicon.id(doc.get(k));
+				seq1.add(lexicon.id(doc.get(k)));
 			}
-			docId[j] = -1;
-			seq[j++] = -d - 1; // i-th document boundry marker
-			d++;
+			tree.add(seq1);
 		}
-	
-		tree = new Tree(lexicon, seq);
 	}
 
 	public Map<Integer, List<Integer>> find(List<String> query) {
-		int[] qseq = new int[query.size()];
+		List<Integer> qseq = new ArrayList<Integer>(query.size());
 		Map<Integer, List<Integer>> ret = new HashMap<Integer, List<Integer>>();
 		for (int i = 0; i < query.size(); ++i) {
 			if (!lexicon.hasToken(query.get(i))) {
 				return ret;
 			}
-			qseq[i] = lexicon.id(query.get(i));
+			qseq.add(lexicon.id(query.get(i)));
 		}
 		return tree.findAll(qseq);
 	}
-	
+
 	public Map<String, List<Integer>> clusters() {
 		Map<List<List<Integer>>, List<Integer>> clusters = tree.getClusters();
 		Map<String, List<Integer>> ret = new HashMap<String, List<Integer>>();
@@ -62,10 +54,11 @@ public class StringTree {
 			for (List<Integer> phrase : phrases) {
 				for (Integer id : phrase) {
 					str.append(" ");
-					if (!lexicon.hasId(id))
-						str.append("$");
-					else
+					if (!lexicon.hasId(id)) {
+						str.append(String.format("$%d", id));
+					} else {
 						str.append(lexicon.token(id));
+					}
 				}
 				str.append("\n");
 			}
