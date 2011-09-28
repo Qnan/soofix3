@@ -3,6 +3,7 @@ package soofix3;
 import java.util.HashMap;
 import java.util.List;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 
@@ -51,5 +52,25 @@ public class StringTree {
 			qseq[i] = lexicon.id(query.get(i));
 		}
 		return tree.findAll(qseq);
+	}
+	
+	public Map<String, List<Integer>> clusters() {
+		Map<List<List<Integer>>, List<Integer>> clusters = tree.getClusters();
+		Map<String, List<Integer>> ret = new HashMap<String, List<Integer>>();
+		for (List<List<Integer>> phrases : clusters.keySet()) {
+			StringBuilder str = new StringBuilder();
+			for (List<Integer> phrase : phrases) {
+				for (Integer id : phrase) {
+					str.append(" ");
+					if (!lexicon.hasId(id))
+						str.append("$");
+					else
+						str.append(lexicon.token(id));
+				}
+				str.append("\n");
+			}
+			ret.put(str.toString(), clusters.get(phrases));
+		}
+		return ret;
 	}
 }

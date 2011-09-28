@@ -14,7 +14,10 @@ class index:
     def find(self, query):
         print self.st.find(query);
 
+    def clusters(self):
+        return self.st.clusters();
 
-idx = index([['o','a','b','c'],['a','b'],['o','a','b','c']])
-idx.find(['a','b'])
-print 'done'
+
+#idx = index([['o','a','b','c'],['a','b'],['o','a','b','c']])
+#idx.find(['a','b'])
+#print 'done'

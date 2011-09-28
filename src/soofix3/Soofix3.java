@@ -1,9 +1,11 @@
 package soofix3;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -64,8 +66,9 @@ public class Soofix3 {
 				// tree
 				Map<Integer, List<Integer>> map = tree.findAll(query);
 				treeResAll = new LinkedList<Integer>();
-				if (map.containsKey(-1))
+				if (map.containsKey(-1)) {
 					treeResAll.addAll(map.get(-1));
+				}
 				Collections.sort(treeResAll);
 
 				// string
@@ -118,56 +121,89 @@ public class Soofix3 {
 	}
 
 	private static void run(String[] args) throws Error, IOException {
-		if (args.length < 2) {
-			throw new Error("arguments: <corpus file> <query file>");
+		if (args.length < 1) {
+			throw new Error("arguments: <corpus file> [<query file>]");
 		}
 		String fnameCorpus = args[0];
-		String fnameQuery = args[1];
 		File fileCorpus = new File(fnameCorpus).getCanonicalFile();
-		File fileQuery = new File(fnameQuery).getCanonicalFile();
 		if (!fileCorpus.exists()) {
 			throw new Error("file not found: " + fileCorpus.getAbsolutePath());
 		}
-		if (!fileQuery.exists()) {
-			throw new Error("file not found: " + fileQuery.getAbsolutePath());
+
+		List<List<String>> queries = null;
+		if (args.length < 1) {
+			String fnameQuery = args[1];
+			File fileQuery = new File(fnameQuery).getCanonicalFile();
+			if (!fileQuery.exists()) {
+				throw new Error("file not found: " + fileQuery.getAbsolutePath());
+			}
+			queries = readDataFile(fileQuery);
 		}
 		List<List<String>> documents = readDataFile(fileCorpus);
-		List<List<String>> queries = readDataFile(fileQuery);
 
+		long t0 = System.currentTimeMillis();
 		StringTree st = new StringTree(documents);
-		st.tree.getClusters();
-		for (List<String> query : queries) {
-			Map<Integer, List<Integer>> matches = st.find(query);
-			for (String word : query) {
-				System.out.print(word);
-				System.out.print(' ');
+		long t1 = System.currentTimeMillis();
+		System.out.format("Tree built: %f\n", (t1 - t0) / 1000.0);
+		
+		Map<String, List<Integer>> clusters = st.clusters();
+		long t2 = System.currentTimeMillis();
+		System.out.format("Clustering done: %f\n", (t2 - t1) / 1000.0);
+		
+		BufferedWriter writer = new BufferedWriter(new FileWriter("clusters.out"));
+		for (String label : clusters.keySet()) {
+			String[] split = label.split("\n");
+			for (int i = 0; i < split.length; ++i) {
+				if (i > 0)
+					writer.append(" & ");
+				writer.append(split[i]);
 			}
-			System.out.println();
-			for (Integer docId : matches.keySet()) {
-				System.out.print(docId);
-				System.out.print(':');
-				for (Integer matchPos : matches.get(docId)) {
+			writer.append("\n");
+			 
+			for (int i = 0; i < clusters.get(label).size(); ++i) {
+				if (i > 0)
+					writer.append(" ");
+				writer.append(clusters.get(label).get(i).toString());
+			}
+			writer.append("\n");
+		}
+		long t3 = System.currentTimeMillis();
+		System.out.format("Clusters stored: %f\n", (t3 - t2) / 1000.0);
+		
+		if (queries != null) {
+			for (List<String> query : queries) {
+				Map<Integer, List<Integer>> matches = st.find(query);
+				for (String word : query) {
+					System.out.print(word);
 					System.out.print(' ');
-					System.out.print(matchPos);
 				}
 				System.out.println();
+				for (Integer docId : matches.keySet()) {
+					System.out.print(docId);
+					System.out.print(':');
+					for (Integer matchPos : matches.get(docId)) {
+						System.out.print(' ');
+						System.out.print(matchPos);
+					}
+					System.out.println();
+				}
+				System.out.println();
+				System.out.println();
 			}
-			System.out.println();
-			System.out.println();
 		}
 	}
 
 	private static void testWord() {
-		int seq[] = new int[]{'m','i','s','s','i','s','s','i','p','p','i'};
+		int seq[] = new int[]{'m', 'i', 's', 's', 'i', 's', 's', 'i', 'p', 'p', 'i'};
 		printSeq(seq);
-		Tree.logBuilding = true;
+//		Tree.logBuilding = true;
 		Map<String, Integer> map = new HashMap<String, Integer>();
 		for (int i = 0; i < seq.length; ++i) {
-			map.put(String.format("%c", (char)seq[i]), seq[i]);
+			map.put(String.format("%c", (char) seq[i]), seq[i]);
 		}
 		Lexicon lexicon = new Lexicon(map);
 		Tree tree = new Tree(lexicon, seq);
-		int[] qseq = new int[]{'s','s','i'};
+		int[] qseq = new int[]{'s', 's', 'i'};
 		Map<Integer, List<Integer>> occur = tree.findAll(qseq);
 		for (Integer i : occur.keySet()) {
 			System.out.print(i);
@@ -186,8 +222,7 @@ public class Soofix3 {
 //		testSearch(200000, 3, 1000, 'z', 1, true);
 //		System.out.println(findShortestFailingSeed(1000, 10000, 'h'));
 
-		Tree.logBuilding = true;
+//		Tree.logBuilding = true;
 		run(args);
 	}
-
 }

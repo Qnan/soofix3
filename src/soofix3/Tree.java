@@ -1,11 +1,14 @@
 package soofix3;
 
+import com.sun.xml.internal.rngom.ast.builder.GrammarSection.Combine;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -13,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 public final class Tree {
 
@@ -62,7 +67,7 @@ public final class Tree {
 
 	private Map<Node, Node> findConnectedComponents(Map<Node, Set<Integer>> clusters, Map<Node, List<Node>> graph) {
 		Map<Node, Node> connectedComponents = new HashMap<Node, Node>();
-		for (Node ref : clusters.keySet()) {
+		for (Node ref : graph.keySet()) {
 			if (!connectedComponents.containsKey(ref)) {
 				findConnectedComponent(ref, connectedComponents, graph);
 			}
@@ -184,30 +189,79 @@ public final class Tree {
 		}
 	}
 
-	private Map<Node, List<Node>> makeGraph(Map<Node, Set<Integer>> clusters) {
+	public static int listCmp (List<Integer> a, List<Integer> b) {
+		int ldiff = a.size() - b.size();
+		if (ldiff != 0)
+			return ldiff;
+		for (int i = 0; i < a.size(); ++i) {
+			int diff = a.get(i) - b.get(i);
+			if (diff != 0)
+				return diff;
+		}
+		return 0;
+	}
+	
+	private Map<Node, List<Node>> makeGraph(Map<Node, Set<Integer>> clusters, final Map<Node, List<Integer>> baseClusterPhrases) {
 		Map<Node, List<Node>> graph = new HashMap<Node, List<Node>>();
 		for (Node node : clusters.keySet()) {
 			graph.put(node, new LinkedList<Node>());
 		}
+		List<Node> baseClusters = new ArrayList<Node>(graph.keySet());
+		final Map<Node, Double> scores = new HashMap<Node, Double>(baseClusters.size());
+
+		for (Node node : baseClusters) {
+			List<Integer> phrase = baseClusterPhrases.get(node);
+			double phraseScore = Math.min(phrase.size(), 6);
+			scores.put(node, clusters.get(node).size() * phraseScore);
+		}
+		
+		int max = 500;
+		SortedSet<Node> beam = new TreeSet<Node>(new Comparator<Node>() {
+			@Override
+			public int compare(Node t, Node t1) {
+				double v = scores.get(t), v1 = scores.get(t1);
+				if (v > v1)
+					return 1;
+				if (v < v1)
+					return -1;
+				List<Integer> list = baseClusterPhrases.get(t);
+				List<Integer> list1 = baseClusterPhrases.get(t1);
+				return listCmp(list, list1);
+			}
+		});
+		
 		// create a connectivity table for the graph
-		for (Node node1 : clusters.keySet()) {
-			for (Node node2 : clusters.keySet()) {
-				if (node1 != node2) {
-					Set<Integer> cluster1 = clusters.get(node1);
-					Set<Integer> cluster2 = clusters.get(node2);
-					int intersectionSz = 0;
-					for (Integer doc : cluster1) {
-						if (cluster2.contains(doc)) {
-							intersectionSz++;
-						}
-					}
-					if (intersectionSz > 0.5 * Math.max(cluster1.size(), cluster2.size())) {
-						graph.get(node1).add(node2);
-					}
+		for (int i = 0; i < baseClusters.size(); ++i) {
+			Node node1 = baseClusters.get(i);
+			for (Node node2 : beam) {
+				Set<Integer> cluster1 = clusters.get(node1);
+				Set<Integer> cluster2 = clusters.get(node2);
+				if (cluster1.size() > cluster2.size()) { // swap
+					cluster1 = clusters.get(node2);
+					cluster2 = clusters.get(node1);
 				}
+				int intersectionSz = intersection(cluster1, cluster2);
+				if (intersectionSz > 0.5 * Math.max(cluster1.size(), cluster2.size())) {
+					graph.get(node1).add(node2);
+				}
+			}
+			beam.add(node1);
+			if (beam.size() > max) {
+//				System.out.println(scores.get(beam.first()));
+				beam.remove(beam.first());
 			}
 		}
 		return graph;
+	}
+
+	private int intersection(Set<Integer> cluster1, Set<Integer> cluster2) {
+		int intersectionSz = 0;
+		for (Integer doc : cluster1) {
+			if (cluster2.contains(doc)) {
+				intersectionSz++;
+			}
+		}
+		return intersectionSz;
 	}
 
 	private void update(Suffix suffix) {
@@ -276,15 +330,29 @@ public final class Tree {
 				cluster.addAll(subCluster);
 			}
 		}
-		clusters.put(node, cluster);
+		if (cluster.size() > 1)
+			clusters.put(node, cluster);
 		return cluster;
 	}
 
-	public Map<Node, Set<Integer>> getClusters() {
+	public Map<List<List<Integer>>, List<Integer>> getClusters() {
 		Map<Node, Set<Integer>> clusters = getBaseClusters();
 		clusters.remove(root); // remove the root cluster?..
-		Map<Node, List<Node>> graph = makeGraph(clusters); // O(n^2)
+
+		Map<Node, List<Integer>> baseClusterPhrases = new HashMap<Node, List<Integer>>();
+		for (Node node : clusters.keySet()) {
+			List<Integer> phrase = nodeToWordIds(node);
+			baseClusterPhrases.put(node, phrase);
+		}
+		
+		long t0 = System.currentTimeMillis();
+		Map<Node, List<Node>> graph = makeGraph(clusters, baseClusterPhrases); // O(n^2)
+		long t1 = System.currentTimeMillis();
+		System.out.format("\tClustering, makeGraph: %f\n", (t1 - t0) / 1000.0);
+
 		Map<Node, Node> connectedComponents = findConnectedComponents(clusters, graph);
+		long t2 = System.currentTimeMillis();
+		System.out.format("\tClustering, findConnectedComponents: %f\n", (t2 - t1) / 1000.0);
 
 		Map<Node, Set<Integer>> mergedClusters = new HashMap<Node, Set<Integer>>();
 		for (Node node : connectedComponents.keySet()) {
@@ -295,32 +363,53 @@ public final class Tree {
 			mergedClusters.get(ref).addAll(clusters.get(node));
 		}
 
-		// print the resulting clusters
-		System.out.println("#########################");
-		for (Node node : mergedClusters.keySet()) {
-			for (Integer doc : mergedClusters.get(node)) {
-				System.out.print(" ");
-				System.out.print(doc);
+		Map<Node, List<List<Integer>>> clusterSummaries = new HashMap<Node, List<List<Integer>>>();
+		for (Node node : connectedComponents.keySet()) {
+			Node ref = connectedComponents.get(node);
+			if (!clusterSummaries.containsKey(ref)) {
+				clusterSummaries.put(ref, new LinkedList<List<Integer>>());
 			}
-			System.out.println();
+			clusterSummaries.get(ref).add(baseClusterPhrases.get(node));
 		}
-		System.out.println("#########################");
 
-		return mergedClusters;
+		Map<List<List<Integer>>, List<Integer>> namedClusters = new HashMap<List<List<Integer>>, List<Integer>>();
+		for (Node node : mergedClusters.keySet()) {
+			List<List<Integer>> summary = clusterSummaries.get(node);
+			Set<Integer> cluster = mergedClusters.get(node);
+//			if (namedClusters.containsKey(summary))
+//				throw new Error("two clusters should not have the same summary");
+			namedClusters.put(summary, new ArrayList<Integer>(cluster));
+		}
+		long t3 = System.currentTimeMillis();
+		System.out.format("\tClustering, merging: %f\n", (t3 - t2) / 1000.0);
+
+//		// print the resulting clusters
+//		System.out.println("#########################");
+//		for (Node node : mergedClusters.keySet()) {
+//			System.out.println(clusterSummaries.get(node));
+//			for (Integer doc : mergedClusters.get(node)) {
+//				System.out.print(" ");
+//				System.out.print(doc);
+//			}
+//			System.out.println();
+//		}
+//		System.out.println("#########################");
+
+		return namedClusters;
 	}
 
 	public Map<Node, Set<Integer>> getBaseClusters() {
 		Map<Node, Set<Integer>> clusters = new HashMap<Node, Set<Integer>>();
 		clustersCollect(clusters, root);
-		for (Node node : clusters.keySet()) {
-			if (clusters.get(node).size() > 1) {
-				System.out.println(nodeToString(node));
-				for (Integer doc : clusters.get(node)) {
-					System.out.format(" %d", doc);
-				}
-				System.out.println();
-			}
-		}
+//		for (Node node : clusters.keySet()) {
+//			if (clusters.get(node).size() > 1) {
+//				System.out.println(nodeToString(node));
+//				for (Integer doc : clusters.get(node)) {
+//					System.out.format(" %d", doc);
+//				}
+//				System.out.println();
+//			}
+//		}
 		return clusters;
 	}
 
@@ -367,6 +456,21 @@ public final class Tree {
 		StringBuilder sb = new StringBuilder();
 		recPrint(sb, node);
 		return sb.toString();
+	}
+
+	private void recCollect(List<Integer> list, Node node) {
+		if (node.parent() != ground) {
+			recCollect(list, node.parent());
+			for (int i = node.startPos(); i < node.endPos(pos); ++i) {
+				list.add(seq[i]);
+			}
+		}
+	}
+
+	private List<Integer> nodeToWordIds(Node node) {
+		List<Integer> ret = new LinkedList<Integer>();
+		recCollect(ret, node);
+		return ret;
 	}
 
 	private int enumnodes(Map<Integer, Node> nodes, Map<Node, Integer> ids, int cnt, Node node) {
