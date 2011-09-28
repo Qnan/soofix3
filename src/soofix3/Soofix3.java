@@ -150,26 +150,17 @@ public class Soofix3 {
 		long t1 = System.currentTimeMillis();
 		System.out.format("Tree built: %f\n", (t1 - t0) / 1000.0);
 
-		Map<String, List<Integer>> clusters = st.clusters();
+		List<List<Integer>> clusters = st.clusters();
 		long t2 = System.currentTimeMillis();
 		System.out.format("Clustering done: %f\n", (t2 - t1) / 1000.0);
 
 		BufferedWriter writer = new BufferedWriter(new FileWriter("clusters.out"));
-		for (String label : clusters.keySet()) {
-			String[] split = label.split("\n");
-			for (int i = 0; i < split.length; ++i) {
-				if (i > 0) {
-					writer.append(" & ");
-				}
-				writer.append(split[i]);
-			}
-			writer.append("\n");
-
-			for (int i = 0; i < clusters.get(label).size(); ++i) {
+		for (List<Integer> cluster : clusters) {
+			for (int i = 0; i < cluster.size(); ++i) {
 				if (i > 0) {
 					writer.append(" ");
 				}
-				writer.append(clusters.get(label).get(i).toString());
+				writer.append(cluster.get(i).toString());
 			}
 			writer.append("\n");
 		}

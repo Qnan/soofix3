@@ -49,4 +49,8 @@ public class Lexicon {
 	boolean hasId(int id) {
 		return inv.containsKey(id);
 	}
+	
+	int size () {
+		return lexicon.size();
+	}
 }

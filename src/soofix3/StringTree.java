@@ -18,11 +18,13 @@ public class StringTree {
 		this.documents = documents;
 		System.out.println("Total " + documents.size() + " documents");
 		Set<String> words = new HashSet<String>();
+		int totalSz = 0;
 		for (List<String> doc : documents) {
 			words.addAll(doc);
+			totalSz += doc.size() + 1;
 		}
 		lexicon = new Lexicon(words);
-		tree = new Tree(lexicon);
+		tree = new Tree(lexicon, totalSz);
 		List<Integer> seq1;
 		for (int d = 0; d < documents.size(); ++d) {
 			List<String> doc = documents.get(d);
@@ -46,24 +48,8 @@ public class StringTree {
 		return tree.findAll(qseq);
 	}
 
-	public Map<String, List<Integer>> clusters() {
-		Map<List<List<Integer>>, List<Integer>> clusters = tree.getClusters();
-		Map<String, List<Integer>> ret = new HashMap<String, List<Integer>>();
-		for (List<List<Integer>> phrases : clusters.keySet()) {
-			StringBuilder str = new StringBuilder();
-			for (List<Integer> phrase : phrases) {
-				for (Integer id : phrase) {
-					str.append(" ");
-					if (!lexicon.hasId(id)) {
-						str.append(String.format("$%d", id));
-					} else {
-						str.append(lexicon.token(id));
-					}
-				}
-				str.append("\n");
-			}
-			ret.put(str.toString(), clusters.get(phrases));
-		}
-		return ret;
+	public List<List<Integer>> clusters() {
+		List<List<Integer>> clusters = tree.getClusters();
+		return clusters;
 	}
 }
