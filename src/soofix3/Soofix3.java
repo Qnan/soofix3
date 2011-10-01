@@ -134,15 +134,11 @@ public class Soofix3 {
 			throw new Error("file not found: " + fileCorpus.getAbsolutePath());
 		}
 
-		List<List<String>> queries = null;
-		if (args.length < 1) {
-			String fnameQuery = args[1];
-			File fileQuery = new File(fnameQuery).getCanonicalFile();
-			if (!fileQuery.exists()) {
-				throw new Error("file not found: " + fileQuery.getAbsolutePath());
-			}
-			queries = readDataFile(fileQuery);
-		}
+		String fnameOut = args[1];
+		File fileOut = new File(fnameOut).getCanonicalFile();
+//		if (!fileOut.exists()) {
+//			throw new Error("file not found: " + fileOut.getAbsolutePath());
+//		}
 		List<List<String>> documents = readDataFile(fileCorpus);
 
 		long t0 = System.currentTimeMillis();
@@ -154,7 +150,7 @@ public class Soofix3 {
 		long t2 = System.currentTimeMillis();
 		System.out.format("Clustering done: %f\n", (t2 - t1) / 1000.0);
 
-		BufferedWriter writer = new BufferedWriter(new FileWriter("clusters.out"));
+		BufferedWriter writer = new BufferedWriter(new FileWriter(fileOut));
 		for (List<Integer> cluster : clusters) {
 			for (int i = 0; i < cluster.size(); ++i) {
 				if (i > 0) {
@@ -167,27 +163,27 @@ public class Soofix3 {
 		long t3 = System.currentTimeMillis();
 		System.out.format("Clusters stored: %f\n", (t3 - t2) / 1000.0);
 
-		if (queries != null) {
-			for (List<String> query : queries) {
-				Map<Integer, List<Integer>> matches = st.find(query);
-				for (String word : query) {
-					System.out.print(word);
-					System.out.print(' ');
-				}
-				System.out.println();
-				for (Integer docId : matches.keySet()) {
-					System.out.print(docId);
-					System.out.print(':');
-					for (Integer matchPos : matches.get(docId)) {
-						System.out.print(' ');
-						System.out.print(matchPos);
-					}
-					System.out.println();
-				}
-				System.out.println();
-				System.out.println();
-			}
-		}
+//		if (queries != null) {
+//			for (List<String> query : queries) {
+//				Map<Integer, List<Integer>> matches = st.find(query);
+//				for (String word : query) {
+//					System.out.print(word);
+//					System.out.print(' ');
+//				}
+//				System.out.println();
+//				for (Integer docId : matches.keySet()) {
+//					System.out.print(docId);
+//					System.out.print(':');
+//					for (Integer matchPos : matches.get(docId)) {
+//						System.out.print(' ');
+//						System.out.print(matchPos);
+//					}
+//					System.out.println();
+//				}
+//				System.out.println();
+//				System.out.println();
+//			}
+//		}
 	}
 
 	private static void testWord() {
