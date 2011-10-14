@@ -115,6 +115,16 @@ public class Soofix3 {
 		}
 		return documents;
 	}
+	
+	private static List<String> readLines(File fileInput) throws FileNotFoundException, IOException {
+		BufferedReader br = new BufferedReader(new FileReader(fileInput));
+		String line;
+		List<String> lines = new LinkedList<String>();
+		while ((line = br.readLine()) != null) {
+			lines.add(line.trim());
+		}
+		return lines;
+	}
 
 	private static String seqToString(List<Integer> seq) {
 		StringBuilder sb = new StringBuilder();
@@ -139,10 +149,18 @@ public class Soofix3 {
 //		if (!fileOut.exists()) {
 //			throw new Error("file not found: " + fileOut.getAbsolutePath());
 //		}
+		
+		List<String> stopWords = new LinkedList<String>();
+		if (args.length > 2) {
+			String fnameStop = args[2];
+			File fileStopWords = new File(fnameStop);
+			stopWords = readLines(fileStopWords);
+		}
+		
 		List<List<String>> documents = readDataFile(fileCorpus);
 
 		long t0 = System.currentTimeMillis();
-		StringTree st = new StringTree(documents);
+		StringTree st = new StringTree(documents, stopWords);
 		long t1 = System.currentTimeMillis();
 		System.out.format("Tree built: %f\n", (t1 - t0) / 1000.0);
 

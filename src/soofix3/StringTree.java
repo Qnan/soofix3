@@ -35,6 +35,11 @@ public class StringTree {
 			tree.add(seq1);
 		}
 	}
+	
+	public StringTree(List<List<String>> documents, List<String> stopWords) {
+		this(documents);
+		lexicon.setStopWordList(stopWords);
+	}
 
 	public Map<Integer, List<Integer>> find(List<String> query) {
 		List<Integer> qseq = new ArrayList<Integer>(query.size());

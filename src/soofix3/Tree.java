@@ -1,6 +1,7 @@
 package soofix3;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -11,8 +12,8 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.SortedSet;
-import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 
 public final class Tree {
 
@@ -35,7 +36,7 @@ public final class Tree {
 			if (!clusterScores.containsKey(ref)) {
 				clusterScores.put(ref, 0.0);
 			}
-			clusterScores.put(ref, clusterScores.get(ref) + baseClusterScores.get(node));
+			clusterScores.put(ref, Math.sqrt(Math.pow(clusterScores.get(ref), 2) + Math.pow(baseClusterScores.get(node), 2)));
 		}
 		return clusterScores;
 	}
@@ -62,8 +63,13 @@ public final class Tree {
 	private int getWordCost (Integer word) {
 		if (word < 0)
 			return 0;
+		String token = lexicon.token(word);
+		if (!Pattern.matches(".*[a-zA-Z].*", token))
+			return 0;
+		if (lexicon.isStopWord(token))
+			return 0;
 		int freq = wordFrequency.get(word);
-		if (freq < 0.02 * docOffset.size() || freq > 0.40 * docOffset.size())
+		if (freq < 0.00 * docOffset.size() || freq > 0.40 * docOffset.size())
 			return 0;
 		return 1;
 	}
@@ -241,7 +247,8 @@ public final class Tree {
 	private Map<Node, List<Node>> makeGraph(Map<Node, Set<Integer>> clusters, final Map<Node, Double> baseClusterScores, final Map<Node, List<Integer>> baseClusterPhrases) {
 		Map<Node, List<Node>> graph = new HashMap<Node, List<Node>>();
 		for (Node node : clusters.keySet()) {
-			graph.put(node, new LinkedList<Node>());
+			graph.put(node, new LinkedList<Node>(Arrays.asList(new Node[]{node})));
+			
 		}
 		List<Node> baseClustersList = new ArrayList<Node>(graph.keySet());
 
@@ -274,7 +281,7 @@ public final class Tree {
 					cluster2 = clusters.get(node1);
 				}
 				int intersectionSz = intersection(cluster1, cluster2);
-				if (intersectionSz > 0.5 * Math.max(cluster1.size(), cluster2.size())) {
+				if (intersectionSz > 0.5 * Math.max(cluster1.size(), cluster2.size()) ) {
 					graph.get(node1).add(node2);
 					graph.get(node2).add(node1);
 				}
@@ -435,8 +442,8 @@ public final class Tree {
 		
 		for (Node node : clusterRepresentatives) {
 			List<List<Integer>> phrases = clusterSummaries.get(node);
-			if (phrases.size() < 2)
-				continue;
+//			if (phrases.size() < 2)
+//				continue;
 			System.out.println(clusterScores.get(node));
 			StringBuilder str = new StringBuilder();
 			for (List<Integer> phrase : phrases) {

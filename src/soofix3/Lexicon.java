@@ -1,7 +1,10 @@
 package soofix3;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class Lexicon {
 
@@ -33,6 +36,10 @@ public class Lexicon {
 		}
 		size = lexicon.size();
 	}
+	
+	void setStopWordList (List<String> list) {
+		stopWords.addAll(list);
+	}
 
 	int id(String token) {
 		return lexicon.get(token);
@@ -52,5 +59,10 @@ public class Lexicon {
 	
 	int size () {
 		return lexicon.size();
+	}
+	
+	Set<String> stopWords = new HashSet<String>();
+	boolean isStopWord (String token) {
+		return stopWords.contains(token);
 	}
 }
