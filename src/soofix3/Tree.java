@@ -36,7 +36,8 @@ public final class Tree {
 			if (!clusterScores.containsKey(ref)) {
 				clusterScores.put(ref, 0.0);
 			}
-			clusterScores.put(ref, Math.sqrt(Math.pow(clusterScores.get(ref), 2) + Math.pow(baseClusterScores.get(node), 2)));
+			clusterScores.put(ref, Math.max(clusterScores.get(ref), baseClusterScores.get(node)));
+//			clusterScores.put(ref, Math.sqrt(Math.pow(clusterScores.get(ref), 2) + Math.pow(baseClusterScores.get(node), 2)));
 		}
 		return clusterScores;
 	}
@@ -60,20 +61,24 @@ public final class Tree {
 		return baseClusterScores;
 	}
 
-	private int getWordCost (Integer word) {
-		if (word < 0)
+	private int getWordCost(Integer word) {
+		if (word < 0) {
 			return 0;
+		}
 		String token = lexicon.token(word);
-		if (!Pattern.matches(".*[a-zA-Z].*", token))
+		if (!Pattern.matches(".*[a-zA-Z].*", token)) {
 			return 0;
-		if (lexicon.isStopWord(token))
+		}
+		if (lexicon.isStopWord(token)) {
 			return 0;
+		}
 		int freq = wordFrequency.get(word);
-		if (freq < 0.00 * docOffset.size() || freq > 0.40 * docOffset.size())
+		if (freq < 0.00 * docOffset.size() || freq > 0.40 * docOffset.size()) {
 			return 0;
+		}
 		return 1;
 	}
-	
+
 	public Tree(Lexicon lexicon) {
 		this(lexicon, 0);
 	}
@@ -247,13 +252,14 @@ public final class Tree {
 	private Map<Node, List<Node>> makeGraph(Map<Node, Set<Integer>> clusters, final Map<Node, Double> baseClusterScores, final Map<Node, List<Integer>> baseClusterPhrases) {
 		Map<Node, List<Node>> graph = new HashMap<Node, List<Node>>();
 		for (Node node : clusters.keySet()) {
-			graph.put(node, new LinkedList<Node>(Arrays.asList(new Node[]{node})));
-			
+			if (baseClusterScores.get(node) > 2.5) {
+				graph.put(node, new LinkedList<Node>(Arrays.asList(new Node[]{node})));
+			}
 		}
 		List<Node> baseClustersList = new ArrayList<Node>(graph.keySet());
 
-		int max = 500;
-		SortedSet<Node> beam = new TreeSet<Node>(new Comparator<Node>() {
+		int max = 200;
+		final Comparator<Node> comparator = new Comparator<Node>() {
 
 			@Override
 			public int compare(Node t, Node t1) {
@@ -264,11 +270,13 @@ public final class Tree {
 				if (v < v1) {
 					return -1;
 				}
-				if (t1 == t)
+				if (t1 == t) {
 					return 0;
+				}
 				return 1;
 			}
-		});
+		};
+		SortedSet<Node> beam = new TreeSet<Node>(comparator);
 
 		// create a connectivity table for the graph
 		for (int i = 0; i < baseClustersList.size(); ++i) {
@@ -280,15 +288,20 @@ public final class Tree {
 					cluster1 = clusters.get(node2);
 					cluster2 = clusters.get(node1);
 				}
+				if (2 * Math.min(cluster1.size(), cluster2.size()) <= Math.max(cluster1.size(), cluster2.size())) {
+					continue;
+				}
 				int intersectionSz = intersection(cluster1, cluster2);
-				if (intersectionSz > 0.5 * Math.max(cluster1.size(), cluster2.size()) ) {
+				if (intersectionSz > 0.5 * Math.max(cluster1.size(), cluster2.size())) {
 					graph.get(node1).add(node2);
 					graph.get(node2).add(node1);
 				}
 			}
-			beam.add(node1);
-			if (beam.size() > max) {
-				beam.remove(beam.first());
+			if (beam.size() <= max || comparator.compare(beam.first(), node1) > 0) {
+				beam.add(node1);
+				if (beam.size() > max) {
+					beam.remove(beam.first());
+				}
 			}
 		}
 		return graph;
@@ -411,11 +424,11 @@ public final class Tree {
 		long t2 = System.currentTimeMillis();
 		System.out.format("\tClustering, findConnectedComponents: %f\n", (t2 - t1) / 1000.0);
 		Map<Node, Double> clusterScores = getAggregateClusterScores(connectedComponents, baseClusterScores);
-		
-		List<Node> clusterRepresentatives = getSortedClustersRepresentative(clusterScores);		
+
+		List<Node> clusterRepresentatives = getSortedClustersRepresentative(clusterScores);
 //		for (Node node : clusterRepresentatives)
 //			System.out.println(clusterScores.get(node));
-		
+
 //		Comparator<Node> cmp = getNodeComparator(clusterScores);
 		Map<Node, Set<Integer>> mergedClusters = new HashMap<Node, Set<Integer>>();
 		for (Node node : connectedComponents.keySet()) {
@@ -425,7 +438,7 @@ public final class Tree {
 			}
 			mergedClusters.get(ref).addAll(baseClusters.get(node));
 		}
-		
+
 		List<List<Integer>> ret = new ArrayList<List<Integer>>(mergedClusters.size());
 		for (Node node : clusterRepresentatives) {
 			ret.add(new ArrayList<Integer>(mergedClusters.get(node)));
@@ -439,7 +452,7 @@ public final class Tree {
 			}
 			clusterSummaries.get(ref).add(baseClusterPhrases.get(node));
 		}
-		
+
 		for (Node node : clusterRepresentatives) {
 			List<List<Integer>> phrases = clusterSummaries.get(node);
 //			if (phrases.size() < 2)
@@ -470,16 +483,19 @@ public final class Tree {
 		Collections.sort(clusterRepresentatives, getNodeComparator(clusterScores));
 		return clusterRepresentatives;
 	}
-	
+
 	public Comparator<Node> getNodeComparator(final Map<Node, Double> clusterScores) {
 		return new Comparator<Node>() {
+
 			@Override
 			public int compare(Node t, Node t1) {
 				double diff = clusterScores.get(t1) - clusterScores.get(t);
-				if (diff > 0)
+				if (diff > 0) {
 					return 1;
-				if (diff < 0)
+				}
+				if (diff < 0) {
 					return -1;
+				}
 				return 0;
 			}
 		};
