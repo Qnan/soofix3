@@ -407,7 +407,7 @@ public final class Tree {
 		return cluster;
 	}
 
-	public List<List<Integer>> getClusters(Map<Node, List<List<Integer>>> clusterSummaries) {
+	public Map<Node, List<Integer>> getClusters(Map<Node, List<List<Integer>>> clusterSummaries) {
 		Map<Node, Set<Integer>> baseClusters = getBaseClusters();
 		Map<Node, List<Integer>> baseClusterPhrases = getBaseClusterPhrases(baseClusters);
 		Map<Node, Double> baseClusterScores = getBaseClusterScores(baseClusters, baseClusterPhrases);
@@ -436,9 +436,9 @@ public final class Tree {
 			mergedClusters.get(ref).addAll(baseClusters.get(node));
 		}
 
-		List<List<Integer>> ret = new ArrayList<List<Integer>>(mergedClusters.size());
+		Map<Node, List<Integer>> ret = new HashMap<Node, List<Integer>>(mergedClusters.size());
 		for (Node node : clusterRepresentatives) {
-			ret.add(new ArrayList<Integer>(mergedClusters.get(node)));
+			ret.put(node, new ArrayList<Integer>(mergedClusters.get(node)));
 		}
 
 //		Map<Node, List<List<Integer>>> clusterSummaries = new HashMap<Node, List<List<Integer>>>();

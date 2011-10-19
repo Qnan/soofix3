@@ -116,7 +116,7 @@ public class Soofix3 {
 		}
 		return documents;
 	}
-	
+
 	private static List<String> readLines(File fileInput) throws FileNotFoundException, IOException {
 		BufferedReader br = new BufferedReader(new FileReader(fileInput));
 		String line;
@@ -150,28 +150,30 @@ public class Soofix3 {
 //		if (!fileOut.exists()) {
 //			throw new Error("file not found: " + fileOut.getAbsolutePath());
 //		}
-		
+
 		List<String> stopWords = new LinkedList<String>();
 		if (args.length > 2) {
 			String fnameStop = args[2];
 			File fileStopWords = new File(fnameStop);
 			stopWords = readLines(fileStopWords);
 		}
-		
+
 		List<List<String>> documents = readDataFile(fileCorpus);
 
 		long t0 = System.currentTimeMillis();
 		StringTree st = new StringTree(documents, stopWords);
+		Lexicon lexicon = st.lexicon;
 		long t1 = System.currentTimeMillis();
 		System.out.format("Tree built: %f\n", (t1 - t0) / 1000.0);
 
 		Map<Node, List<List<Integer>>> clusterSummaries = new HashMap<Node, List<List<Integer>>>();
-		List<List<Integer>> clusters = st.clusters(clusterSummaries);		
+		Map<Node, List<Integer>> clusters = st.clusters(clusterSummaries);
 		long t2 = System.currentTimeMillis();
 		System.out.format("Clustering done: %f\n", (t2 - t1) / 1000.0);
-		
+
 		BufferedWriter writer = new BufferedWriter(new FileWriter(fileOut));
-		for (List<Integer> cluster : clusters) {
+		for (Node node : clusters.keySet()) {
+			List<Integer> cluster = clusters.get(node);
 			for (int i = 0; i < cluster.size(); ++i) {
 				if (i > 0) {
 					writer.append(" ");
@@ -179,6 +181,16 @@ public class Soofix3 {
 				writer.append(cluster.get(i).toString());
 			}
 			writer.append("\n");
+			for (List<Integer> phrase : clusterSummaries.get(node)) {
+				for (int i = 0; i < phrase.size(); ++i) {
+					if (i == 0) {
+						writer.append("#");
+					}
+					writer.append(" ");
+					writer.append(lexicon.token(phrase.get(i)));
+				}
+				writer.append("\n");
+			}
 		}
 		long t3 = System.currentTimeMillis();
 		System.out.format("Clusters stored: %f\n", (t3 - t2) / 1000.0);
