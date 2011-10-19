@@ -53,8 +53,8 @@ public class StringTree {
 		return tree.findAll(qseq);
 	}
 
-	public List<List<Integer>> clusters() {
-		List<List<Integer>> clusters = tree.getClusters();
+	public List<List<Integer>> clusters(Map<Node, List<List<Integer>>> clusterSummaries) {
+		List<List<Integer>> clusters = tree.getClusters(clusterSummaries);
 		return clusters;
 	}
 }

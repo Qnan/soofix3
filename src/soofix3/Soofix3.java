@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -164,10 +165,11 @@ public class Soofix3 {
 		long t1 = System.currentTimeMillis();
 		System.out.format("Tree built: %f\n", (t1 - t0) / 1000.0);
 
-		List<List<Integer>> clusters = st.clusters();
+		Map<Node, List<List<Integer>>> clusterSummaries = new HashMap<Node, List<List<Integer>>>();
+		List<List<Integer>> clusters = st.clusters(clusterSummaries);		
 		long t2 = System.currentTimeMillis();
 		System.out.format("Clustering done: %f\n", (t2 - t1) / 1000.0);
-
+		
 		BufferedWriter writer = new BufferedWriter(new FileWriter(fileOut));
 		for (List<Integer> cluster : clusters) {
 			for (int i = 0; i < cluster.size(); ++i) {

@@ -9,10 +9,9 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 public final class Tree {
@@ -252,13 +251,13 @@ public final class Tree {
 	private Map<Node, List<Node>> makeGraph(Map<Node, Set<Integer>> clusters, final Map<Node, Double> baseClusterScores, final Map<Node, List<Integer>> baseClusterPhrases) {
 		Map<Node, List<Node>> graph = new HashMap<Node, List<Node>>();
 		for (Node node : clusters.keySet()) {
-			if (baseClusterScores.get(node) > 2.5) {
+			if (baseClusterScores.get(node) > 0.5) {
 				graph.put(node, new LinkedList<Node>(Arrays.asList(new Node[]{node})));
 			}
 		}
 		List<Node> baseClustersList = new ArrayList<Node>(graph.keySet());
 
-		int max = 200;
+		int max = 1000;
 		final Comparator<Node> comparator = new Comparator<Node>() {
 
 			@Override
@@ -276,7 +275,7 @@ public final class Tree {
 				return 1;
 			}
 		};
-		SortedSet<Node> beam = new TreeSet<Node>(comparator);
+		PriorityQueue<Node> beam = new PriorityQueue<Node>(max, comparator);
 
 		// create a connectivity table for the graph
 		for (int i = 0; i < baseClustersList.size(); ++i) {
@@ -297,11 +296,9 @@ public final class Tree {
 					graph.get(node2).add(node1);
 				}
 			}
-			if (beam.size() <= max || comparator.compare(beam.first(), node1) > 0) {
-				beam.add(node1);
-				if (beam.size() > max) {
-					beam.remove(beam.first());
-				}
+			beam.add(node1);
+			if (beam.size() > max) {
+				beam.poll();
 			}
 		}
 		return graph;
@@ -410,7 +407,7 @@ public final class Tree {
 		return cluster;
 	}
 
-	public List<List<Integer>> getClusters() {
+	public List<List<Integer>> getClusters(Map<Node, List<List<Integer>>> clusterSummaries) {
 		Map<Node, Set<Integer>> baseClusters = getBaseClusters();
 		Map<Node, List<Integer>> baseClusterPhrases = getBaseClusterPhrases(baseClusters);
 		Map<Node, Double> baseClusterScores = getBaseClusterScores(baseClusters, baseClusterPhrases);
@@ -444,34 +441,35 @@ public final class Tree {
 			ret.add(new ArrayList<Integer>(mergedClusters.get(node)));
 		}
 
-		Map<Node, List<List<Integer>>> clusterSummaries = new HashMap<Node, List<List<Integer>>>();
-		for (Node node : connectedComponents.keySet()) {
-			Node ref = connectedComponents.get(node);
-			if (!clusterSummaries.containsKey(ref)) {
-				clusterSummaries.put(ref, new LinkedList<List<Integer>>());
+//		Map<Node, List<List<Integer>>> clusterSummaries = new HashMap<Node, List<List<Integer>>>();
+		if (clusterSummaries != null) {
+			for (Node node : connectedComponents.keySet()) {
+				Node ref = connectedComponents.get(node);
+				if (!clusterSummaries.containsKey(ref)) {
+					clusterSummaries.put(ref, new LinkedList<List<Integer>>());
+				}
+				clusterSummaries.get(ref).add(baseClusterPhrases.get(node));
 			}
-			clusterSummaries.get(ref).add(baseClusterPhrases.get(node));
 		}
-
-		for (Node node : clusterRepresentatives) {
-			List<List<Integer>> phrases = clusterSummaries.get(node);
+//		for (Node node : clusterRepresentatives) {
+//			List<List<Integer>> phrases = clusterSummaries.get(node);
 //			if (phrases.size() < 2)
 //				continue;
-			System.out.println(clusterScores.get(node));
-			StringBuilder str = new StringBuilder();
-			for (List<Integer> phrase : phrases) {
-				for (Integer id : phrase) {
-					str.append(" ");
-					if (!lexicon.hasId(id)) {
-						str.append(String.format("$%d", id));
-					} else {
-						str.append(lexicon.token(id));
-					}
-				}
-				str.append("\n");
-			}
-			System.out.println(str.toString());
-		}
+//			System.out.println(clusterScores.get(node));
+//			StringBuilder str = new StringBuilder();
+//			for (List<Integer> phrase : phrases) {
+//				for (Integer id : phrase) {
+//					str.append(" ");
+//					if (!lexicon.hasId(id)) {
+//						str.append(String.format("$%d", id));
+//					} else {
+//						str.append(lexicon.token(id));
+//					}
+//				}
+//				str.append("\n");
+//			}
+//			System.out.println(str.toString());
+//		}
 		long t3 = System.currentTimeMillis();
 		System.out.format("\tClustering, merging: %f\n", (t3 - t2) / 1000.0);
 
