@@ -35,7 +35,7 @@ public class StringTree {
 			tree.add(seq1);
 		}
 	}
-	
+
 	public StringTree(List<List<String>> documents, List<String> stopWords) {
 		this(documents);
 		lexicon.setStopWordList(stopWords);
@@ -53,8 +53,8 @@ public class StringTree {
 		return tree.findAll(qseq);
 	}
 
-	public Map<Node, List<Integer>> clusters(Map<Node, List<List<Integer>>> clusterSummaries) {
-		Map<Node, List<Integer>> clusters = tree.getClusters(clusterSummaries);
+	public Map<Node, List<Integer>> clusters(Map<Node, List<List<Integer>>> clusterSummaries, Map<Node, Double> clusterScores) {
+		Map<Node, List<Integer>> clusters = tree.getClusters(clusterSummaries, clusterScores);
 		return clusters;
 	}
 }

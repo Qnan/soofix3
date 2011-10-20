@@ -28,17 +28,19 @@ public final class Tree {
 	List<Integer> docOffset;
 	Map<Integer, Integer> wordFrequency;
 
-	private Map<Node, Double> getAggregateClusterScores(Map<Node, Node> connectedComponents, final Map<Node, Double> baseClusterScores) {
-		final Map<Node, Double> clusterScores = new HashMap<Node, Double>(connectedComponents.values().size());
+	private void getAggregateClusterScores(Map<Node, Double> clusterScores, Map<Node, Node> connectedComponents, final Map<Node, Double> baseClusterScores, final Map<Node, List<Integer>> baseClusterPhrases, final Map<Node, Set<Integer>> clusters) {
 		for (Node node : connectedComponents.keySet()) {
 			Node ref = connectedComponents.get(node);
 			if (!clusterScores.containsKey(ref)) {
 				clusterScores.put(ref, 0.0);
 			}
-			clusterScores.put(ref, Math.max(clusterScores.get(ref), baseClusterScores.get(node)));
-//			clusterScores.put(ref, Math.sqrt(Math.pow(clusterScores.get(ref), 2) + Math.pow(baseClusterScores.get(node), 2)));
+
+			clusterScores.put(ref, clusterScores.get(ref) + phraseScore(baseClusterPhrases.get(node)));
 		}
-		return clusterScores;
+
+		for (Node ref : clusters.keySet()) {
+			clusterScores.put(ref, clusterScores.get(ref) * clusters.get(ref).size());
+		}
 	}
 
 	private Map<Node, List<Integer>> getBaseClusterPhrases(final Map<Node, Set<Integer>> baseClusters) {
@@ -407,7 +409,7 @@ public final class Tree {
 		return cluster;
 	}
 
-	public Map<Node, List<Integer>> getClusters(Map<Node, List<List<Integer>>> clusterSummaries) {
+	public Map<Node, List<Integer>> getClusters(Map<Node, List<List<Integer>>> clusterSummaries, Map<Node, Double> clusterScores) {
 		Map<Node, Set<Integer>> baseClusters = getBaseClusters();
 		Map<Node, List<Integer>> baseClusterPhrases = getBaseClusterPhrases(baseClusters);
 		Map<Node, Double> baseClusterScores = getBaseClusterScores(baseClusters, baseClusterPhrases);
@@ -420,9 +422,7 @@ public final class Tree {
 		Map<Node, Node> connectedComponents = findConnectedComponents(baseClusters, graph);
 		long t2 = System.currentTimeMillis();
 		System.out.format("\tClustering, findConnectedComponents: %f\n", (t2 - t1) / 1000.0);
-		Map<Node, Double> clusterScores = getAggregateClusterScores(connectedComponents, baseClusterScores);
 
-		List<Node> clusterRepresentatives = getSortedClustersRepresentative(clusterScores);
 //		for (Node node : clusterRepresentatives)
 //			System.out.println(clusterScores.get(node));
 
@@ -435,6 +435,9 @@ public final class Tree {
 			}
 			mergedClusters.get(ref).addAll(baseClusters.get(node));
 		}
+		getAggregateClusterScores(clusterScores, connectedComponents, baseClusterScores, baseClusterPhrases, mergedClusters);
+
+		List<Node> clusterRepresentatives = getSortedClustersRepresentative(clusterScores);
 
 		Map<Node, List<Integer>> ret = new HashMap<Node, List<Integer>>(mergedClusters.size());
 		for (Node node : clusterRepresentatives) {

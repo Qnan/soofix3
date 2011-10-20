@@ -167,7 +167,8 @@ public class Soofix3 {
 		System.out.format("Tree built: %f\n", (t1 - t0) / 1000.0);
 
 		Map<Node, List<List<Integer>>> clusterSummaries = new HashMap<Node, List<List<Integer>>>();
-		Map<Node, List<Integer>> clusters = st.clusters(clusterSummaries);
+		Map<Node, Double> clusterScores = new HashMap<Node, Double>();
+		Map<Node, List<Integer>> clusters = st.clusters(clusterSummaries, clusterScores);
 		long t2 = System.currentTimeMillis();
 		System.out.format("Clustering done: %f\n", (t2 - t1) / 1000.0);
 
@@ -181,6 +182,13 @@ public class Soofix3 {
 				writer.append(cluster.get(i).toString());
 			}
 			writer.append("\n");
+
+			// print score
+			writer.append("#");
+			writer.append(String.format("%.2f", clusterScores.get(node)));
+			writer.append("\n");
+
+			// print phrases
 			for (List<Integer> phrase : clusterSummaries.get(node)) {
 				for (int i = 0; i < phrase.size(); ++i) {
 					if (i == 0) {
