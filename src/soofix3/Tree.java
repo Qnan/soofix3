@@ -154,7 +154,7 @@ public final class Tree {
 			}
 			node = node.getChild(token);
 			for (j = node.startPos(); j < node.endPos(pos) && i < seq.size(); ++j, ++i) {
-				if (seq.get(i) < 0 || seq.get(i) != this.seq.get(j)) {
+				if (seq.get(i) < 0 || !seq.get(i).equals(this.seq.get(j))) {
 					return -1;
 				}
 			}
@@ -200,7 +200,7 @@ public final class Tree {
 		} else {
 			Node next = suffix.node.getChild(seq.get(suffix.from));
 			int nextPos = next.startPos() + pos - suffix.from - 1;
-			if (token == seq.get(nextPos)) {
+			if (seq.get(nextPos).equals(token)) {
 				return null; // end point
 			} else {
 				// do split
@@ -208,6 +208,7 @@ public final class Tree {
 				suffix.node.setChild(seq.get(next.startPos()), newNode);
 				next.setStartPos(nextPos);
 				newNode.setChild(seq.get(nextPos), next);
+				next.setParent(newNode);
 				return newNode;
 			}
 		}
@@ -382,6 +383,15 @@ public final class Tree {
 		build();
 	}
 
+	private boolean verifyParents(Node node) {
+		for (Integer token : node.tokens()) {
+			Node child = node.getChild(token);
+			if (child.parent() != node || !verifyParents(child))
+				return false;
+		}
+		return true;
+	}
+	
 	private void build() {
 		for (; pos <= seq.size(); ++pos) {
 			update(suffix);
