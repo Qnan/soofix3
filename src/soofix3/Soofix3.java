@@ -16,6 +16,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -160,6 +161,24 @@ public class Soofix3 {
 
 		List<List<String>> documents = readDataFile(fileCorpus);
 
+		int clusterMaxSize = documents.size() / 10, clusterMinSize = 3;
+		double scoreThreshold = 1000.0;
+
+		if (args.length > 3) {
+			String clusterMin = args[3];
+			clusterMinSize = Integer.parseInt(clusterMin);
+		}
+
+		if (args.length > 4) {
+			String clusterMax = args[4];
+			clusterMaxSize = Integer.parseInt(clusterMax);
+		}
+
+		if (args.length > 5) {
+			String scoreThresholdStr = args[5];
+			scoreThreshold = Double.parseDouble(scoreThresholdStr);
+		}
+
 		long t0 = System.currentTimeMillis();
 		StringTree st = new StringTree(documents, stopWords);
 		Lexicon lexicon = st.lexicon;
@@ -173,8 +192,14 @@ public class Soofix3 {
 		System.out.format("Clustering done: %f\n", (t2 - t1) / 1000.0);
 
 		BufferedWriter writer = new BufferedWriter(new FileWriter(fileOut));
+		Set<Integer> allDocumentsInClusters = new HashSet<Integer>();
 		for (Node node : clusters.keySet()) {
 			List<Integer> cluster = clusters.get(node);
+			if (cluster.size() < clusterMinSize || cluster.size() > clusterMaxSize)
+				continue;
+			if (clusterScores.get(node) < scoreThreshold)
+				continue;
+			allDocumentsInClusters.addAll(cluster);
 			for (int i = 0; i < cluster.size(); ++i) {
 				if (i > 0) {
 					writer.append(" ");
@@ -200,6 +225,18 @@ public class Soofix3 {
 				writer.append("\n");
 			}
 		}
+		List<Integer> missingDocuments = new ArrayList<Integer>();
+		for (int i = 0; i < documents.size(); ++i) {
+			missingDocuments.add(i);
+		}
+		missingDocuments.removeAll(allDocumentsInClusters);
+
+		for (Integer doc : missingDocuments) {
+			writer.append(doc.toString());
+			writer.append("\n");
+		}
+
+		writer.close();
 		long t3 = System.currentTimeMillis();
 		System.out.format("Clusters stored: %f\n", (t3 - t2) / 1000.0);
 
