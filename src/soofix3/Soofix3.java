@@ -179,6 +179,11 @@ public class Soofix3 {
 			scoreThreshold = Double.parseDouble(scoreThresholdStr);
 		}
 
+		if (args.length > 6) {
+			String topicFlag = args[6];
+			Lexicon.useTopics = Boolean.parseBoolean(topicFlag);
+		}
+
 		long t0 = System.currentTimeMillis();
 		StringTree st = new StringTree(documents, stopWords);
 		Lexicon lexicon = st.lexicon;

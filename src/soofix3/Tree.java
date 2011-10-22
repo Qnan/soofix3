@@ -67,11 +67,13 @@ public final class Tree {
 			return 0;
 		}
 		String token = lexicon.token(word);
-		if (!Pattern.matches(".*[a-zA-Z].*", token)) {
-			return 0;
-		}
-		if (lexicon.isStopWord(token)) {
-			return 0;
+		if (Lexicon.useTopics) {
+			if (token.endsWith(".-1"))
+				return 0;
+		} else {
+			if (!Pattern.matches(".*[a-zA-Z].*", token) || lexicon.isStopWord(token)) {
+				return 0;
+			}
 		}
 		int freq = wordFrequency.get(word);
 		if (freq < 0.00 * docOffset.size() || freq > 0.40 * docOffset.size()) {
@@ -391,7 +393,7 @@ public final class Tree {
 		}
 		return true;
 	}
-	
+
 	private void build() {
 		for (; pos <= seq.size(); ++pos) {
 			update(suffix);

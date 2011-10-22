@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class Lexicon {
+	static boolean useTopics = false;
 
 	final Map<String, Integer> lexicon = new HashMap<String, Integer>();
 	final Map<Integer, String> inv = new HashMap<Integer, String>();
