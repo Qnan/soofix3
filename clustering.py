@@ -20,8 +20,8 @@ doc = None
 #ids = []
 cnt = 0
 id = -1
-outf = open("wines.txt",'wt')
-idf = open("wids.txt",'wt')
+outf = open("topics.txt",'wt')
+idf = open("topic-ids.txt",'wt')
 for line in f:
     if num > 0 and cnt >= num:
         break
@@ -34,7 +34,8 @@ for line in f:
         id = line[2:].strip()
     else:
         if len(line.strip()) > 0:
-            word = line.split()[1].lower()
+            word = line.split()[2] + '.' + line.split()[5]
+            #word = line.split()[1].lower()
             outf.write(word + ' ')
 f.close()
 outf.close()
