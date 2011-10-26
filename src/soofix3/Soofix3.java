@@ -138,7 +138,7 @@ public class Soofix3 {
 
 	private static void run(String[] args) throws Error, IOException {
 		if (args.length < 1) {
-			throw new Error("arguments: <corpus file> [<query file>]");
+			throw new Error("arguments: <corpus file> <output file> [<stopwords file> <min-documents> <max-documents> <min-score> <topic-mode>]");
 		}
 		String fnameCorpus = args[0];
 		File fileCorpus = new File(fnameCorpus).getCanonicalFile();
